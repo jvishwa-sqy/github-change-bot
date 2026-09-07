@@ -1,5 +1,11 @@
 # Project handoff
 
+## Move to another VM
+
+The project is portable and is not bound to this VM. Use
+[DEPLOYMENT.md](DEPLOYMENT.md) on the new machine: it provides a one-command
+systemd installer, a Docker Compose alternative, and the move checklist.
+
 ## Completed
 
 - GitHub push webhook receiver with HMAC verification, replay protection, and

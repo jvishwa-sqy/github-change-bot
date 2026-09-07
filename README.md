@@ -40,35 +40,12 @@ Recommended tests
 [ View Diff ]
 ```
 
-## Current VM deployment
+## Deployment
 
-This installation is deployed on the current VM with systemd:
-
-| Component | Location or status |
-|---|---|
-| Application code | `/opt/git-change-bot` |
-| Configuration | `/etc/git-change-bot.env` (root-owned, mode `640`) |
-| Persistent queue, mirrors, and indexes | `/var/lib/git-change-bot` |
-| Web service | `git-change-bot-web.service`, bound to `127.0.0.1:8088` |
-| Background worker | `git-change-bot-worker.service` |
-| Temporary public HTTPS tunnel | `git-change-bot-tunnel.service` via Cloudflare Quick Tunnel |
-| Local health check | `curl -sS http://127.0.0.1:8088/health` |
-
-Both services are enabled to start after a VM reboot. A public domain, TLS
-certificate, Nginx configuration, and GitHub webhook are still required before
-GitHub can reach this installation.
-
-For no-cost testing, a Cloudflare Quick Tunnel is active. Obtain its current
-temporary URL with:
-
-```bash
-sudo journalctl -u git-change-bot-tunnel --no-pager -o cat \
-  | sed -n 's/.*\(https:\/\/[-a-z0-9]*\.trycloudflare\.com\).*/\1/p' \
-  | tail -1
-```
-
-Append `/webhooks/github` to that URL in GitHub. The URL changes if the tunnel
-service restarts, so it is for testing only.
+The application is portable: source code, configuration, and runtime data are
+separate. It can be installed on another Linux VM with the included systemd
+installer or run through Docker Compose. See [DEPLOYMENT.md](DEPLOYMENT.md)
+for the complete move and run instructions.
 
 ---
 

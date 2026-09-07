@@ -4,10 +4,11 @@ services:
     env_file: .env
     ports:
       - "127.0.0.1:8088:8088"
+    environment:
+      GIT_SSH_COMMAND: ssh -i /home/gitbot/.ssh/id_ed25519 -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new
     volumes:
       - bot-data:/var/lib/git-change-bot
-      # Mount a directory containing the read-only deploy key when using SSH.
-      - ${BOT_SSH_DIR:?set BOT_SSH_DIR}:/home/gitbot/.ssh:ro
+      - ${BOT_SSH_DIR:?set BOT_SSH_DIR}:/run/host-ssh:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8088/health')"]
@@ -19,9 +20,11 @@ services:
     build: .
     env_file: .env
     command: ["python", "-m", "app.worker"]
+    environment:
+      GIT_SSH_COMMAND: ssh -i /home/gitbot/.ssh/id_ed25519 -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new
     volumes:
       - bot-data:/var/lib/git-change-bot
-      - ${BOT_SSH_DIR:?set BOT_SSH_DIR}:/home/gitbot/.ssh:ro
+      - ${BOT_SSH_DIR:?set BOT_SSH_DIR}:/run/host-ssh:ro
     restart: unless-stopped
     depends_on:
       web:
