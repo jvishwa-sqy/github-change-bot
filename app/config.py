@@ -6,10 +6,10 @@ import logging
 import os
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import Field, SecretStr, field_validator, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 log = logging.getLogger(__name__)
 
@@ -158,11 +158,13 @@ class Settings(BaseSettings):
     log_json: bool = False
 
     # -------------------------------------------------------------- Filtering
-    ignore_patterns: list[str] = Field(default_factory=lambda: list(DEFAULT_IGNORE_PATTERNS))
+    ignore_patterns: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: list(DEFAULT_IGNORE_PATTERNS)
+    )
     # Extra patterns appended to the defaults (does not replace them).
-    extra_ignore_patterns: list[str] = Field(default_factory=list)
+    extra_ignore_patterns: Annotated[list[str], NoDecode] = Field(default_factory=list)
     # Only analyse pushes to these refs; empty means "all branches".
-    watched_branches: list[str] = Field(default_factory=list)
+    watched_branches: Annotated[list[str], NoDecode] = Field(default_factory=list)
 
     @field_validator(
         "ignore_patterns",
@@ -178,7 +180,12 @@ class Settings(BaseSettings):
             if not stripped:
                 return []
             if stripped.startswith("["):
-                return value  # let pydantic parse the JSON form
+                # `NoDecode` keeps blank CSV values from being treated as
+                # invalid JSON by pydantic-settings, so parse explicit JSON
+                # lists here instead.
+                import json
+
+                return json.loads(stripped)
             return [part.strip() for part in stripped.split(",") if part.strip()]
         return value
 

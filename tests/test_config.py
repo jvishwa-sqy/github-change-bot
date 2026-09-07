@@ -72,6 +72,20 @@ def test_csv_list_settings_are_split() -> None:
     assert settings.watched_branches == ["main", "develop"]
 
 
+def test_blank_list_settings_in_env_file_are_allowed(tmp_path) -> None:
+    """The documented `EXTRA_IGNORE_PATTERNS=` form means an empty list."""
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "LLM_PROVIDER=null\n"
+        "REQUIRE_WEBHOOK_SIGNATURE=false\n"
+        "EXTRA_IGNORE_PATTERNS=\n"
+        "WATCHED_BRANCHES=\n"
+    )
+    settings = Settings(_env_file=env_file)
+    assert settings.extra_ignore_patterns == []
+    assert settings.watched_branches == []
+
+
 def test_derived_paths(tmp_path) -> None:
     settings = Settings(
         github_webhook_secret="s", llm_provider="null", bot_data_dir=tmp_path / "data"
