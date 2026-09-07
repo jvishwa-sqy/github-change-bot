@@ -4,14 +4,32 @@ from __future__ import annotations
 
 import logging
 import os
+import runpy
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Literal
 
 from pydantic import Field, SecretStr, field_validator, model_validator
-from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+from pydantic.fields import FieldInfo
+from pydantic_settings import BaseSettings, NoDecode, PydanticBaseSettingsSource, SettingsConfigDict
 
 log = logging.getLogger(__name__)
+
+
+class PythonConfigSource(PydanticBaseSettingsSource):
+    """Read non-secret settings from the root-level ``config.py`` file."""
+
+    def get_field_value(self, field: FieldInfo, field_name: str) -> tuple[object, str, bool]:
+        return None, field_name, False
+
+    def __call__(self) -> dict[str, object]:
+        path = os.getenv("BOT_CONFIG_FILE", "config.py")
+        if not os.path.isfile(path):
+            return {}
+        values = runpy.run_path(path).get("SETTINGS", {})
+        if not isinstance(values, dict):
+            raise ValueError(f"{path} must define SETTINGS as a dictionary")
+        return values
 
 
 def _readable_env_file() -> str | None:
@@ -88,6 +106,23 @@ class Settings(BaseSettings):
         extra="ignore",
         case_sensitive=False,
     )
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        return (
+            init_settings,
+            env_settings,
+            dotenv_settings,
+            PythonConfigSource(settings_cls),
+            file_secret_settings,
+        )
 
     # ---------------------------------------------------------------- GitHub
     # HMAC-SHA256 shared secret configured on the GitHub webhook ("Secret").

@@ -4,6 +4,7 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .env
+config.py
 id_ed25519
 id_ed25519.pub
 .data/

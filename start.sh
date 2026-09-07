@@ -33,18 +33,12 @@ require_command docker
 docker compose version >/dev/null 2>&1 || fail "Docker Compose plugin is required."
 
 [ -f .env ] || fail "Missing .env. Create it with: cp .env.example .env"
+[ -f config.py ] || fail "Missing config.py. Create it with: cp config.py.example config.py"
 [ -f id_ed25519 ] || fail "Missing id_ed25519. Add the SSH private key that can read your GitHub repositories."
 
 chmod 600 id_ed25519
 require_env_value GITHUB_WEBHOOK_SECRET
-require_env_value SLACK_WEBHOOK_URL
-
-llm_provider="$(env_value LLM_PROVIDER)"
-case "$llm_provider" in
-  google) require_env_value GOOGLE_API_KEY ;;
-  null) ;;
-  *) fail "LLM_PROVIDER must be google or null in .env." ;;
-esac
+require_env_value GOOGLE_API_KEY
 
 export BOT_SSH_DIR="$project_dir"
 docker compose config -q

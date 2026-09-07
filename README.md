@@ -48,6 +48,7 @@ Keep the private files you manage in the project root:
 ```text
 github-change-bot/
 ├── .env                 private configuration; never commit it
+├── config.py            private runtime configuration; never commit it
 ├── id_ed25519           GitHub-readable SSH private key; never commit it
 ├── id_ed25519.pub       public half of that key
 ├── README.md            this guide
@@ -55,7 +56,7 @@ github-change-bot/
 └── app/                 application code
 ```
 
-`.env`, `id_ed25519`, and `id_ed25519.pub` are ignored by Git.
+`.env`, `config.py`, `id_ed25519`, and `id_ed25519.pub` are ignored by Git.
 
 ## 2. Add the GitHub SSH key
 
@@ -81,24 +82,24 @@ If GitHub rejects the key, add `id_ed25519.pub` in GitHub:
 - Many repositories: add the key to a GitHub user with read access to all of
   those repositories.
 
-## 3. Create `.env`
+## 3. Create `.env` and `config.py`
 
 ```bash
 cp .env.example .env
+cp config.py.example config.py
 chmod 600 .env
+chmod 600 config.py
 ```
 
-Set these required values in `.env`:
+`.env` contains only the two API secrets:
 
 ```env
 GITHUB_WEBHOOK_SECRET=replace-with-a-random-secret
-SLACK_WEBHOOK_URL=https://hooks.slack.com/services/...
-
-LLM_PROVIDER=google
 GOOGLE_API_KEY=replace-with-your-google-api-key
-GOOGLE_MODEL=gemini-2.5-flash
-GOOGLE_THINKING_BUDGET=0
 ```
+
+`config.py` contains the Slack webhook URL and every non-secret setting. It
+starts with sensible defaults; set `slack_webhook_url` to your Slack webhook.
 
 Generate the GitHub secret with:
 
@@ -106,7 +107,8 @@ Generate the GitHub secret with:
 openssl rand -hex 32
 ```
 
-Do not share `.env`, API keys, Slack webhook URLs, or the private SSH key.
+Do not share `.env`, `config.py`, API keys, Slack webhook URLs, or the private
+SSH key.
 
 ## 4. Create the Slack webhook
 
@@ -124,7 +126,7 @@ Turns GitHub code pushes into clear, AI-powered Slack change summaries.
 5. Click **Add New Webhook to Workspace**.
 6. Select the Slack channel for change summaries and click **Allow**.
 7. Copy the URL beginning with `https://hooks.slack.com/services/`.
-8. Paste it into `.env` as `SLACK_WEBHOOK_URL`.
+8. Paste it into `config.py` as `slack_webhook_url`.
 
 If the URL is ever exposed, delete that webhook in Slack and create a new one.
 
@@ -135,7 +137,6 @@ If the URL is ever exposed, delete that webhook in Slack and create a new one.
 1. Open <https://aistudio.google.com/apikey>.
 2. Create an API key.
 3. Put it in `.env` as `GOOGLE_API_KEY`.
-4. Keep `LLM_PROVIDER=google`.
 
 ## 6. Start the bot
 
@@ -147,8 +148,8 @@ From the project root, start everything with the single startup command:
 
 It checks the required configuration, protects the SSH key permissions, builds
 the image, starts the services, waits for the webhook API, and prints the
-Cloudflare URL when it is available. Run it again after changing `.env` or
-pulling a new version of the project.
+Cloudflare URL when it is available. Run it again after changing `.env`,
+`config.py`, or pulling a new version of the project.
 
 Compose starts these services:
 
@@ -271,7 +272,7 @@ curl -sS http://127.0.0.1:8088/ready
 # Recent worker logs
 docker compose logs --tail 100 worker
 
-# Restart after editing .env
+# Restart after editing .env or config.py
 docker compose up -d --force-recreate
 
 # Stop the bot
@@ -286,8 +287,8 @@ delete all queue and mirror data.
 ## Move to another VM
 
 1. Clone this repository on the new VM.
-2. Securely copy `.env`, `id_ed25519`, and `id_ed25519.pub` into the new
-   project root.
+2. Securely copy `.env`, `config.py`, `id_ed25519`, and `id_ed25519.pub` into
+   the new project root.
 3. Run `./start.sh`.
 4. Bootstrap every monitored repository.
 5. Update GitHub webhooks with the new tunnel URL.

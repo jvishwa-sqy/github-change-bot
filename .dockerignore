@@ -5,6 +5,7 @@ __pycache__
 .pytest_cache
 .ruff_cache
 .env
+config.py
 .data
 *.sqlite3
 tests

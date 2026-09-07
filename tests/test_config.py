@@ -37,6 +37,18 @@ def test_missing_env_file_is_ignored(tmp_path, monkeypatch) -> None:
     assert _readable_env_file() is None
 
 
+def test_python_config_file_supplies_non_secret_settings(tmp_path, monkeypatch) -> None:
+    config_file = tmp_path / "config.py"
+    config_file.write_text(
+        "SETTINGS = {'slack_webhook_url': 'https://hooks.slack.com/services/a/b/c', "
+        "'worker_poll_seconds': 7}\n"
+    )
+    monkeypatch.setenv("BOT_CONFIG_FILE", str(config_file))
+    settings = Settings(github_webhook_secret="s", google_api_key="key")
+    assert settings.slack_webhook_url is not None
+    assert settings.worker_poll_seconds == 7
+
+
 def test_google_provider_requires_a_key() -> None:
     with pytest.raises(ValueError, match="GOOGLE_API_KEY"):
         Settings(github_webhook_secret="s", llm_provider="google", google_api_key=None)
