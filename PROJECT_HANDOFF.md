@@ -41,9 +41,8 @@ repositories.
 These items require your GitHub, Slack, cloud, and server credentials. They
 cannot be completed from this workspace alone.
 
-- Create or select the GitHub repository that will host this bot.
-- Give this machine access to that repository and provide its SSH or HTTPS URL
-  so `main` can be pushed.
+- The bot source is published at
+  <https://github.com/jvishwa-sqy/github-change-bot> on the `main` branch.
 - Create a GitHub webhook secret and configure a push-event webhook.
 - Grant the existing SSH key read access to every repository the bot will
   analyse, either through its GitHub user account or a read-only deploy-key
@@ -54,23 +53,21 @@ cannot be completed from this workspace alone.
 
 ## What you need to do
 
-1. Create an empty GitHub repository and send me its SSH or HTTPS URL. I will
-   add it as `origin` and push the committed project.
-2. Pick the deployment method:
+1. Pick the deployment method:
    - **Docker Compose:** copy `.env.example` to `.env`, set every required
      secret, create the `deploy-ssh` key directory, then follow the container
      deployment section in `README.md`.
    - **systemd/Nginx:** follow sections 3–14 of `README.md` on the target VM.
-3. Set the required values in the deployment environment:
+2. Set the required values in the deployment environment:
    `GITHUB_WEBHOOK_SECRET`, `SLACK_WEBHOOK_URL`, `LLM_PROVIDER`, and either
    `GOOGLE_API_KEY` or `OPENAI_API_KEY`.
-4. Grant the existing SSH key read access to each source repository that Git
+3. Grant the existing SSH key read access to each source repository that Git
    must mirror and analyse.
-5. Configure a GitHub push webhook to:
+4. Configure a GitHub push webhook to:
    `https://YOUR-DOMAIN/webhooks/github`.
-6. Bootstrap each source repository before enabling its webhook. The exact
+5. Bootstrap each source repository before enabling its webhook. The exact
    command is documented in README section 11.
-7. Make a small test push and confirm the worker completes the job and Slack
+6. Make a small test push and confirm the worker completes the job and Slack
    receives the change summary.
 
 ## Immediate remaining actions
