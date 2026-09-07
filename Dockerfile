@@ -13,6 +13,7 @@ RUN apt-get update \
 WORKDIR /app
 COPY pyproject.toml ./
 COPY app ./app
+COPY scripts/bootstrap_repo.py ./scripts/bootstrap_repo.py
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint
 RUN python -m pip install . \
     && mkdir -p /var/lib/git-change-bot \

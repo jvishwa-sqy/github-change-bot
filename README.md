@@ -1,128 +1,112 @@
 # GitHub Change Bot
 
-GitHub Change Bot watches code pushes and posts a clear summary to Slack. It
-uses the real Git diff, relevant nearby code, and Gemini or OpenAI to explain
-what changed and why it matters.
+GitHub Change Bot turns GitHub pushes into concise Slack summaries. It reads
+the real Git diff, adds limited nearby code context, asks Gemini or OpenAI for
+an explanation, and posts a polished Slack card with the risk level, change
+size, key changes, affected areas, and GitHub diff link.
 
 ```mermaid
 flowchart LR
     G[GitHub push] --> W[Webhook API]
-    W --> Q[(Queue)]
+    W --> Q[(SQLite queue)]
     Q --> R[Worker]
     R --> D[Git diff]
     D --> A[Gemini or OpenAI]
     A --> S[Slack]
 ```
 
-The webhook responds immediately. The worker handles Git, AI, and Slack in
-the background, so GitHub never waits for a long analysis.
+Docker Compose is the supported way to run this project. It starts the
+webhook API, background worker, persistent data volume, and a free temporary
+Cloudflare HTTPS tunnel together.
 
-## Slack notification
+## What you need
 
-Each notification presents a risk-led header, branch, author, change size,
-summary, key changes, affected areas, compact commit details, and a direct
-GitHub diff link in one Slack card.
+- Docker Engine and the Docker Compose plugin. Follow the official
+  [Docker installation guide](https://docs.docker.com/engine/install/) for
+  your VM operating system.
+- A GitHub repository to monitor.
+- An SSH key that can read that repository.
+- A Gemini API key or OpenAI API key.
+- A Slack incoming webhook URL.
 
-## Project files
-
-Keep the files you manage in the project root:
-
-```text
-github-change-bot/
-├── .env                 your private configuration; never commit it
-├── id_ed25519           existing GitHub-readable SSH private key; never commit it
-├── id_ed25519.pub       public half of the SSH key
-├── README.md            this guide
-├── scripts/install_systemd.sh
-├── compose.yaml
-└── app/
-```
-
-`.env`, `id_ed25519`, and `id_ed25519.pub` are ignored by Git. During systemd
-installation, the installer copies them into protected service locations. The
-original root-project files remain unchanged.
-
-## Before you start
-
-You need:
-
-- A Linux VM with Python 3.12, Git, rsync, curl, and systemd.
-- A GitHub account and a repository you want the bot to watch.
-- An SSH key with read access to that repository.
-- A Google Gemini API key or OpenAI API key.
-- A Slack workspace and a channel for bot summaries.
-
-## 1. Clone the project
-
-On a new Ubuntu or Debian VM, install the required packages first:
+Check Docker before continuing:
 
 ```bash
-sudo apt update
-sudo apt install -y python3.12 python3.12-venv git rsync curl
+docker --version
+docker compose version
 ```
 
-Then clone the project:
+## 1. Clone the project
 
 ```bash
 git clone git@github.com:jvishwa-sqy/github-change-bot.git
 cd github-change-bot
 ```
 
-## 2. Put your SSH key in the project root
+Keep the private files you manage in the project root:
 
-Copy the existing key that can clone your GitHub repositories:
+```text
+github-change-bot/
+├── .env                 private configuration; never commit it
+├── id_ed25519           GitHub-readable SSH private key; never commit it
+├── id_ed25519.pub       public half of that key
+├── README.md            this guide
+├── compose.yaml         Docker services
+└── app/                 application code
+```
+
+`.env`, `id_ed25519`, and `id_ed25519.pub` are ignored by Git.
+
+## 2. Add the GitHub SSH key
+
+Copy the existing key that can clone the repositories you want to monitor:
 
 ```bash
-cp /path/to/your/existing/id_ed25519 ./id_ed25519
-cp /path/to/your/existing/id_ed25519.pub ./id_ed25519.pub
+cp /path/to/id_ed25519 ./id_ed25519
+cp /path/to/id_ed25519.pub ./id_ed25519.pub
 chmod 600 ./id_ed25519
 chmod 644 ./id_ed25519.pub
 ```
 
-Check that the key can access GitHub:
+Verify GitHub access:
 
 ```bash
 ssh -i ./id_ed25519 -o IdentitiesOnly=yes -T git@github.com
 ```
 
-Expected output includes your GitHub username. If you see `Permission denied`,
-add `id_ed25519.pub` to GitHub first:
+If GitHub rejects the key, add `id_ed25519.pub` in GitHub:
 
-- For one repository: **Repository → Settings → Deploy keys → Add deploy key**.
-  Leave write access disabled.
-- For several repositories: add the key to a GitHub user that has read access
-  to all of them.
+- One repository: **Repository → Settings → Deploy keys → Add deploy key**.
+  Keep write access disabled.
+- Many repositories: add the key to a GitHub user with read access to all of
+  those repositories.
 
-## 3. Create `.env` in the project root
+## 3. Create `.env`
 
 ```bash
 cp .env.example .env
 chmod 600 .env
 ```
 
-Open `.env` and set the required values below.
+Set these required values in `.env`:
 
 ```env
-# GitHub verifies every webhook with this value.
 GITHUB_WEBHOOK_SECRET=replace-with-a-random-secret
-
-# Where summaries are sent.
 SLACK_WEBHOOK_URL=https://hooks.slack.com/services/...
 
-# Choose one AI provider.
 LLM_PROVIDER=google
 GOOGLE_API_KEY=replace-with-your-google-api-key
 GOOGLE_MODEL=gemini-2.5-flash
 GOOGLE_THINKING_BUDGET=0
 ```
 
-Generate a secure GitHub webhook secret:
+Generate the GitHub secret with:
 
 ```bash
 openssl rand -hex 32
 ```
 
-If you use OpenAI instead of Google, use this part of `.env`:
+To use OpenAI instead, set:
 
 ```env
 LLM_PROVIDER=openai
@@ -130,172 +114,144 @@ OPENAI_API_KEY=replace-with-your-openai-api-key
 OPENAI_MODEL=gpt-5
 ```
 
-Do not set both providers unless you intend to keep one unused. The value of
-`LLM_PROVIDER` decides which API key the bot uses.
+`LLM_PROVIDER` selects the active provider. Do not share `.env`, API keys,
+Slack webhook URLs, or the private SSH key.
 
 ## 4. Create the Slack webhook
 
-Suggested Slack app description: **Turns GitHub code pushes into clear,
-AI-powered Slack change summaries.**
+Suggested Slack app description:
 
-1. Go to <https://api.slack.com/apps> and select **Create New App**.
-2. Choose **From scratch**, give it a name such as `GitHub Change Bot`, and
-   select your Slack workspace.
+```text
+Turns GitHub code pushes into clear, AI-powered Slack change summaries.
+```
+
+1. Open <https://api.slack.com/apps> and select **Create New App**.
+2. Select **From scratch**, name it `GitHub Change Bot`, and choose your
+   Slack workspace.
 3. Open **Incoming Webhooks** in the left menu.
-4. Turn on **Activate Incoming Webhooks**.
+4. Enable **Activate Incoming Webhooks**.
 5. Click **Add New Webhook to Workspace**.
-6. Select the Slack channel that should receive code-change summaries.
-7. Click **Allow**.
-8. Copy the generated webhook URL. It starts with
-   `https://hooks.slack.com/services/`.
-9. Paste it into `.env` as `SLACK_WEBHOOK_URL`.
+6. Select the Slack channel for change summaries and click **Allow**.
+7. Copy the URL beginning with `https://hooks.slack.com/services/`.
+8. Paste it into `.env` as `SLACK_WEBHOOK_URL`.
 
-Treat the Slack webhook URL like a password. Anyone with it can post messages
-to that Slack channel. If it is exposed, delete the webhook in Slack and
-create a new one.
+If the URL is ever exposed, delete that webhook in Slack and create a new one.
 
-## 5. Get an AI API key
+## 5. Get an AI key
 
-### Google Gemini
+### Gemini
 
-1. Go to <https://aistudio.google.com/apikey>.
+1. Open <https://aistudio.google.com/apikey>.
 2. Create an API key.
-3. Copy it into `.env` as `GOOGLE_API_KEY`.
+3. Put it in `.env` as `GOOGLE_API_KEY`.
 4. Keep `LLM_PROVIDER=google`.
 
 ### OpenAI
 
-1. Go to <https://platform.openai.com/api-keys>.
+1. Open <https://platform.openai.com/api-keys>.
 2. Create a secret API key.
-3. Copy it into `.env` as `OPENAI_API_KEY`.
+3. Put it in `.env` as `OPENAI_API_KEY`.
 4. Set `LLM_PROVIDER=openai`.
 
-Treat AI API keys as passwords. Rotate a key immediately if it is shared in a
-chat, committed, or otherwise exposed.
+## 6. Start the bot
 
-## 6. Install and start the bot
-
-From the project root, run:
+From the project root:
 
 ```bash
-sudo ./scripts/install_systemd.sh
+export BOT_SSH_DIR="$PWD"
+docker compose up --build -d
 ```
 
-The installer uses `./.env` and `./id_ed25519` by default. It creates:
+Compose starts these services:
 
-```text
-/opt/git-change-bot                 deployed application code
-/etc/git-change-bot.env             protected runtime configuration
-/var/lib/git-change-bot             queue, Git mirrors, indexes, service key
-```
+| Service | Purpose |
+|---|---|
+| `web` | Receives and verifies GitHub webhooks |
+| `worker` | Fetches Git changes, calls AI, and sends Slack messages |
+| `tunnel` | Creates a free public HTTPS URL for testing |
 
-It also starts two services:
-
-```text
-git-change-bot-web       receives GitHub webhooks
-git-change-bot-worker    analyses pushes and sends Slack summaries
-```
-
-Check the installation:
+Check that the API is healthy:
 
 ```bash
 curl -sS http://127.0.0.1:8088/health
-sudo systemctl status git-change-bot-web git-change-bot-worker --no-pager
+docker compose ps
 ```
 
-Expected health response:
+Expected response:
 
 ```json
 {"status":"ok"}
 ```
 
-## 7. Get a free public HTTPS URL for testing
+## 7. Get the public webhook URL
 
-GitHub must reach the bot over public HTTPS. If you do not have a domain, use
-a free Cloudflare Quick Tunnel. Its URL changes after the tunnel restarts, so
-use it for testing only.
-
-Install `cloudflared` on Ubuntu or Debian:
+The `tunnel` service writes a temporary `trycloudflare.com` URL to its logs:
 
 ```bash
-curl --fail --location --output /tmp/cloudflared.deb \
-  https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
-sudo dpkg -i /tmp/cloudflared.deb
+docker compose logs tunnel
 ```
 
-Start the tunnel:
-
-```bash
-cloudflared tunnel --url http://127.0.0.1:8088
-```
-
-It prints a URL similar to:
-
-```text
-https://example-name.trycloudflare.com
-```
-
-Keep the command running. Your webhook URL is:
+Copy the URL and add `/webhooks/github` to it:
 
 ```text
 https://example-name.trycloudflare.com/webhooks/github
 ```
 
+The URL changes if the tunnel container restarts. This free tunnel is for
+testing; update the GitHub webhook whenever its URL changes.
+
 ## 8. Add the GitHub webhook
 
-Open the repository you want the bot to monitor:
+For each repository the bot should monitor, open:
 
 ```text
 Repository → Settings → Webhooks → Add webhook
 ```
 
-Fill the form like this:
+Set:
 
 | GitHub field | Value |
 |---|---|
-| Payload URL | Your public URL ending in `/webhooks/github` |
+| Payload URL | The public URL ending in `/webhooks/github` |
 | Content type | `application/json` |
-| Secret | The `GITHUB_WEBHOOK_SECRET` from `.env` |
+| Secret | `GITHUB_WEBHOOK_SECRET` from `.env` |
 | SSL verification | Enable SSL verification |
 | Events | Just the push event |
 | Active | Checked |
 
-GitHub sends a ping after you save. A successful delivery has HTTP status 200
-and response body:
+GitHub sends a ping after saving. A successful ping returns:
 
 ```json
 {"status":"pong"}
 ```
 
-Repeat this step for every repository the bot should monitor.
+## 9. Bootstrap each monitored repository
 
-## 9. Bootstrap the repository
+Bootstrap creates a local bare mirror and repository map before the first
+push. It does not call AI or post to Slack.
 
-Run this once for each repository you monitor. Replace the placeholders:
+Run once per repository:
 
 ```bash
-sudo -u gitbot env BOT_ENV_FILE=/etc/git-change-bot.env \
-  /opt/git-change-bot/.venv/bin/python /opt/git-change-bot/scripts/bootstrap_repo.py \
+docker compose exec --user 10001:10001 worker \
+  python scripts/bootstrap_repo.py \
   --project-id GITHUB_REPOSITORY_ID \
   --repo-url git@github.com:OWNER/REPOSITORY.git \
   --project-name OWNER/REPOSITORY \
   --ref main
 ```
 
-Find the numeric ID at:
+Find `GITHUB_REPOSITORY_ID` at:
 
 ```text
 https://api.github.com/repos/OWNER/REPOSITORY
 ```
 
-Bootstrap only creates the Git mirror and repository map. It does not call AI
-or send Slack messages.
+Repeat the webhook and bootstrap steps for every repository you monitor.
 
-Repeat this step for every monitored repository before its first push.
+## 10. Test the full flow
 
-## 10. Test it
-
-Make a small real change in the monitored repository and push it:
+Make a small real change in a monitored repository and push it:
 
 ```bash
 git add .
@@ -303,65 +259,48 @@ git commit -m "Test GitHub Change Bot"
 git push origin main
 ```
 
-Watch the worker:
+Watch processing logs:
 
 ```bash
-sudo journalctl -u git-change-bot-worker -f
+docker compose logs --follow worker
 ```
 
-Expected result:
+Expected flow:
 
 ```text
 push enqueued → job started → diff computed → AI response → Slack notified → job completed
 ```
 
-## Docker option
-
-If you prefer Docker instead of systemd:
+## Daily commands
 
 ```bash
-export BOT_SSH_DIR="$PWD"
-docker compose up --build -d
-curl -sS http://127.0.0.1:8088/health
+# Current service state
+docker compose ps
+
+# API health and queue counts
+curl -sS http://127.0.0.1:8088/ready
+
+# Recent worker logs
+docker compose logs --tail 100 worker
+
+# Restart after editing .env
+docker compose up -d --force-recreate
+
+# Stop the bot
+docker compose down
 ```
 
-Docker reads `.env` and copies the root-project `id_ed25519` key into the
-container only while it is running. The key is not stored in the image or
-Docker volume. The same command starts the `web`, `worker`, and free `tunnel`
-services.
-
-Get the temporary public URL with:
-
-```bash
-docker compose logs tunnel
-```
-
-The logs contain a temporary `trycloudflare.com` URL. Add
-`/webhooks/github` to that URL when configuring GitHub. The URL changes if
-the tunnel container restarts.
+The queue, Git mirrors, and repository maps are stored in the persistent
+`bot-data` Docker volume. `docker compose down` stops containers but preserves
+that volume. Use `docker compose down -v` only when you intentionally want to
+delete all queue and mirror data.
 
 ## Move to another VM
 
 1. Clone this repository on the new VM.
 2. Securely copy `.env`, `id_ed25519`, and `id_ed25519.pub` into the new
    project root.
-3. Run `sudo ./scripts/install_systemd.sh`.
-4. Bootstrap each monitored repository on the new VM.
-5. Update the GitHub webhooks with the new public URL.
-6. Stop the services on the old VM only after the new VM works.
-
-## Useful commands
-
-```bash
-# Health and queue counts
-curl -sS http://127.0.0.1:8088/ready
-
-# Service state
-sudo systemctl is-active git-change-bot-web git-change-bot-worker
-
-# Recent worker logs
-sudo journalctl -u git-change-bot-worker -n 100 --no-pager
-
-# Restart after changing runtime configuration
-sudo systemctl restart git-change-bot-web git-change-bot-worker
-```
+3. Run `export BOT_SSH_DIR="$PWD"` and `docker compose up --build -d`.
+4. Bootstrap every monitored repository.
+5. Update GitHub webhooks with the new tunnel URL.
+6. After testing the new VM, run `docker compose down` on the old VM.
