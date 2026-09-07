@@ -17,6 +17,25 @@
 - Validation completed: 229 tests pass, Ruff passes, Docker Compose validates,
   and the Docker image builds and imports successfully.
 
+## Current VM deployment
+
+The bot is deployed on this VM with systemd.
+
+| Component | Current state |
+|---|---|
+| Application code | `/opt/git-change-bot` |
+| Runtime data and Git mirrors | `/var/lib/git-change-bot` |
+| Configuration and secrets | `/etc/git-change-bot.env` (mode `640`) |
+| Web service | `git-change-bot-web.service`, active and enabled at boot |
+| Worker service | `git-change-bot-worker.service`, active and enabled at boot |
+| Local health endpoint | `http://127.0.0.1:8088/health` |
+| Public HTTPS endpoint | Pending a domain, TLS certificate, Nginx configuration, and firewall rule |
+
+The existing SSH private key is reused through a protected service-account copy
+at `/var/lib/git-change-bot/.ssh/id_ed25519`. GitHub currently rejects that
+key, so it must be granted access before the worker can clone source
+repositories.
+
 ## Pending external setup
 
 These items require your GitHub, Slack, cloud, and server credentials. They
@@ -52,6 +71,20 @@ cannot be completed from this workspace alone.
    command is documented in README section 11.
 7. Make a small test push and confirm the worker completes the job and Slack
    receives the change summary.
+
+## Immediate remaining actions
+
+1. Add the public key from `/home/aisqy/.ssh/id_ed25519.pub` to GitHub access:
+   either grant the corresponding GitHub user read access to every repository
+   the bot will analyse, or add the key under the repository's **Settings →
+   Deploy keys** with write access disabled. GitHub currently rejects this key
+   when the service account tests it.
+2. Provide the public domain name that should receive GitHub webhooks. Point
+   its DNS record to this VM and allow inbound TCP ports 80 and 443 in the
+   cloud firewall. A TLS certificate is also required before the webhook can
+   be enabled.
+3. Provide the first repository's GitHub `owner/repository` name. Its numeric
+   repository ID and SSH URL are needed for the bootstrap command.
 
 ## How to obtain the required `.env` values
 
