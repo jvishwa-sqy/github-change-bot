@@ -37,6 +37,7 @@ docker compose version >/dev/null 2>&1 || fail "Docker Compose plugin is require
 [ -f id_ed25519 ] || fail "Missing id_ed25519. Add the SSH private key that can read your GitHub repositories."
 
 chmod 600 id_ed25519
+chmod 644 config.py
 require_env_value GITHUB_WEBHOOK_SECRET
 require_env_value GOOGLE_API_KEY
 require_env_value SLACK_WEBHOOK_URL
