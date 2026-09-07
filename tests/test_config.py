@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import os
+import logging
 
 import pytest
 
 from app.config import Settings, _readable_env_file, load_settings_lenient
+from app.logging_setup import configure_logging
 
 
 def test_unreadable_env_file_is_ignored(tmp_path, monkeypatch) -> None:
@@ -104,3 +106,8 @@ def test_secrets_are_not_exposed_by_repr() -> None:
     )
     assert "super-secret-value" not in repr(settings)
     assert "AIza-super-secret" not in repr(settings)
+
+
+def test_http_client_urls_are_not_logged_at_info() -> None:
+    configure_logging("INFO")
+    assert logging.getLogger("httpx").level == logging.WARNING

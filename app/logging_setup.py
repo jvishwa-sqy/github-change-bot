@@ -64,6 +64,8 @@ def configure_logging(level: str = "INFO", *, json_output: bool = False) -> None
     root.addHandler(handler)
     root.setLevel(level.upper())
 
-    # These are chatty and would otherwise echo request bodies at DEBUG.
+    # httpx logs full request URLs at INFO. A Slack incoming-webhook URL is a
+    # credential, so never allow its request logger to inherit the app's INFO
+    # or DEBUG level.
     for noisy in ("httpx", "httpcore", "urllib3"):
-        logging.getLogger(noisy).setLevel(max(logging.INFO, root.level))
+        logging.getLogger(noisy).setLevel(logging.WARNING)
