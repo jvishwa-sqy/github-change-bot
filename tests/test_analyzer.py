@@ -52,10 +52,7 @@ class FakeLLM:
             summary="Dotcom inbound calls can now register language-switching tools.",
             changes=["DOTCOM registers the existing language tools."],
             affected_components=["Dotcom inbound listener"],
-            impact=["Callers can switch language mid-call."],
             risk="medium",
-            risk_reason="Live call path changed.",
-            recommended_tests=["English → Hindi → English."],
         )
 
     async def synthesize(self, request, summaries):

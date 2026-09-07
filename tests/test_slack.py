@@ -35,10 +35,7 @@ def summary() -> ChangeSummary:
         summary="Enabled language switching for Dotcom inbound calls.",
         changes=["DOTCOM now registers existing language tools.", "Cold calling unchanged."],
         affected_components=["Dotcom inbound listener", "Language tool registration"],
-        impact=["Dotcom callers can dynamically switch language."],
         risk="medium",
-        risk_reason="Runtime tool initialization on the live call path changed.",
-        recommended_tests=["Test English → Hindi → English.", "Verify cold-calling behaviour."],
     )
 
 
@@ -62,11 +59,10 @@ def test_change_blocks_contain_every_section() -> None:
         "Summary",
         "What changed",
         "Affected",
-        "Impact",
-        "Risk reason",
-        "Recommended tests",
     ):
         assert f"*{section}*" in rendered or section in rendered
+    for removed_section in ("Impact", "Risk reason", "Recommended tests"):
+        assert f"*{removed_section}*" not in rendered
     assert "View Diff" in rendered
 
 

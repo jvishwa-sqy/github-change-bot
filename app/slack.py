@@ -96,10 +96,6 @@ def build_change_blocks(
 
     blocks += _titled("What changed", _bullets(summary.changes))
     blocks += _titled("Affected", _bullets(summary.affected_components, limit=6))
-    blocks += _titled("Impact", _bullets(summary.impact, limit=6))
-    if summary.risk_reason:
-        blocks += _titled("Risk reason", _truncate(summary.risk_reason, 1000))
-    blocks += _titled("Recommended tests", _bullets(summary.recommended_tests, limit=6))
 
     context_bits = [f"`{event.before_sha[:8]}…{event.after_sha[:8]}`"]
     if event.commit_count:

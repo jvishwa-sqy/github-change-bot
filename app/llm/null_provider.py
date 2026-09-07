@@ -27,10 +27,7 @@ class NullProvider(BaseLLMProvider):
             ),
             changes=[f"{c.status.value}: {c.path}" for c in request.files[:20]],
             affected_components=sorted({p.rsplit("/", 1)[0] for p in paths})[:10],
-            impact=[],
             risk="low",
-            risk_reason="No model analysis was performed.",
-            recommended_tests=[],
         )
 
     async def synthesize(

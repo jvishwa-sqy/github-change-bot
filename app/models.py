@@ -272,10 +272,7 @@ class ChangeSummary(BaseModel):
     summary: str
     changes: list[str] = Field(default_factory=list)
     affected_components: list[str] = Field(default_factory=list)
-    impact: list[str] = Field(default_factory=list)
     risk: Literal["low", "medium", "high"] = "low"
-    risk_reason: str = ""
-    recommended_tests: list[str] = Field(default_factory=list)
 
 
 # Schema handed to providers that take an explicit JSON schema (Gemini's
@@ -299,27 +296,13 @@ CHANGE_SUMMARY_JSON_SCHEMA: dict[str, Any] = {
             "items": {"type": "string"},
             "description": "Named subsystems, modules or services affected.",
         },
-        "impact": {
-            "type": "array",
-            "items": {"type": "string"},
-            "description": "Runtime or product impact of the change.",
-        },
         "risk": {"type": "string", "enum": ["low", "medium", "high"]},
-        "risk_reason": {"type": "string"},
-        "recommended_tests": {
-            "type": "array",
-            "items": {"type": "string"},
-            "description": "Specific tests a reviewer should run.",
-        },
     },
     "required": [
         "summary",
         "changes",
         "affected_components",
-        "impact",
         "risk",
-        "risk_reason",
-        "recommended_tests",
     ],
 }
 

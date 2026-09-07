@@ -37,9 +37,7 @@ Identify:
 - overall change
 - concrete behavioral changes
 - affected components
-- runtime/product impact
 - realistic risks
-- tests that should be executed
 
 Secrets in the supplied text have been replaced with [REDACTED]; treat those as
 opaque and never speculate about their values.
@@ -136,9 +134,7 @@ def build_synthesis_prompt(
             f"Summary: {summary.summary}\n"
             f"Changes: {'; '.join(summary.changes) or 'n/a'}\n"
             f"Affected: {'; '.join(summary.affected_components) or 'n/a'}\n"
-            f"Impact: {'; '.join(summary.impact) or 'n/a'}\n"
-            f"Risk: {summary.risk} — {summary.risk_reason}\n"
-            f"Tests: {'; '.join(summary.recommended_tests) or 'n/a'}"
+            f"Risk: {summary.risk}"
         )
     return "\n\n".join(parts)
 
