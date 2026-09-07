@@ -102,6 +102,9 @@ SLACK_WEBHOOK_URL=https://hooks.slack.com/services/...
 
 `config.py` contains every non-secret runtime setting.
 
+Run all Docker commands in this README from the project root. Compose uses
+that directory as the SSH-key mount by default.
+
 Generate the GitHub secret with:
 
 ```bash
