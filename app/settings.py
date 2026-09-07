@@ -1,4 +1,4 @@
-"""Application configuration, loaded from environment variables / .env."""
+"""Application settings, loaded from environment variables and root config.py."""
 
 from __future__ import annotations
 

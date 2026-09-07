@@ -24,13 +24,13 @@ from pathlib import Path
 # Allow running the script directly from a checkout.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.config import load_settings_lenient  # noqa: E402
 from app.errors import ChangeBotError  # noqa: E402
 from app.git_repo import GitConfig, GitMirror, sanitize_url  # noqa: E402
 from app.ignore import IgnoreMatcher  # noqa: E402
 from app.locks import project_lock  # noqa: E402
 from app.logging_setup import configure_logging  # noqa: E402
 from app.repo_map import RepoMapStore, is_source_file  # noqa: E402
+from app.settings import load_settings_lenient  # noqa: E402
 
 log = logging.getLogger("bootstrap")
 

@@ -13,7 +13,7 @@ from app.repo_map import (
 
 PYTHON_SOURCE = '''"""Module docstring."""
 import os
-from app.config import get_settings
+from app.settings import get_settings
 from . import sibling
 
 TIMEOUT = 30
@@ -51,7 +51,7 @@ def test_python_symbols_are_qualified() -> None:
 
 def test_python_imports_and_constants() -> None:
     entry = index_source("app/foo.py", PYTHON_SOURCE)
-    assert entry.imports == [".sibling", "app.config", "os"]
+    assert entry.imports == [".sibling", "app.settings", "os"]
     constants = [s.name for s in entry.symbols if s.kind is SymbolKind.CONSTANT]
     assert constants == ["TIMEOUT"]
 

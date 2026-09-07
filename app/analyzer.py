@@ -15,7 +15,6 @@ import time
 from dataclasses import dataclass, field
 from typing import Literal
 
-from app.config import Settings
 from app.context import ContextBuilder, ContextLimits, group_files_by_subsystem
 from app.git_repo import (
     GitConfig,
@@ -37,6 +36,7 @@ from app.models import (
     PushEventKind,
 )
 from app.repo_map import RepoMapStore
+from app.settings import Settings
 from app.slack import SlackNotifier, compare_link
 
 log = logging.getLogger(__name__)

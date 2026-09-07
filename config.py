@@ -1,8 +1,6 @@
 """Runtime configuration for GitHub Change Bot."""
 
 SETTINGS = {
-    # --- Slack -------------------------------------------------------------
-    "slack_webhook_url": None,
     "slack_timeout_seconds": 10,
     "notify_on_ignored_only": False,
     "notify_on_branch_delete": True,

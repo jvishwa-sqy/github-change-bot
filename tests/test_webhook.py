@@ -8,10 +8,10 @@ from collections.abc import Iterator
 import pytest
 from fastapi.testclient import TestClient
 
-from app.config import Settings
 from app.main import create_app
 from app.queue import JobQueue
 from app.security import compute_signature
+from app.settings import Settings
 
 SECRET = "test-webhook-secret"
 ZERO = "0" * 40

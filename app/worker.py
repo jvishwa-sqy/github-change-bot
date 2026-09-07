@@ -16,13 +16,13 @@ import signal
 import time
 
 from app.analyzer import ChangeAnalyzer
-from app.config import Settings, get_settings
 from app.errors import PermanentJobError, UnknownRevisionError
 from app.git_repo import short
 from app.llm import build_provider
 from app.logging_setup import configure_logging
 from app.models import Job, JobStatus
 from app.queue import JobQueue
+from app.settings import Settings, get_settings
 from app.slack import SlackNotifier
 
 log = logging.getLogger(__name__)

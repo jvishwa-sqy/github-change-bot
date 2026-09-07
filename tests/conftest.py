@@ -22,8 +22,8 @@ os.environ.setdefault("LOG_LEVEL", "WARNING")
 # Never read a developer's real .env during the test run.
 os.environ["BOT_ENV_FILE"] = "/nonexistent/.env"
 
-from app.config import Settings  # noqa: E402
 from app.git_repo import GitConfig, GitMirror  # noqa: E402
+from app.settings import Settings  # noqa: E402
 
 GIT_ENV = {
     **os.environ,

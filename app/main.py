@@ -16,13 +16,13 @@ from typing import Annotated, Any
 from fastapi import Depends, FastAPI, Request, Response, status
 from fastapi.responses import JSONResponse
 
-from app.config import Settings, get_settings
 from app.errors import WebhookVerificationError
 from app.git_repo import short
 from app.logging_setup import configure_logging
 from app.models import PushEvent, PushEventKind
 from app.queue import JobQueue
 from app.security import verify_webhook
+from app.settings import Settings, get_settings
 
 log = logging.getLogger(__name__)
 

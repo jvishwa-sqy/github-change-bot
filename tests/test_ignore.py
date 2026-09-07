@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from app.config import DEFAULT_IGNORE_PATTERNS
 from app.ignore import IgnoreMatcher
+from app.settings import DEFAULT_IGNORE_PATTERNS
 
 matcher = IgnoreMatcher(DEFAULT_IGNORE_PATTERNS)
 

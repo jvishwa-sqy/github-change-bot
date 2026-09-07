@@ -7,8 +7,8 @@ import os
 
 import pytest
 
-from app.config import Settings, _readable_env_file, load_settings_lenient
 from app.logging_setup import configure_logging
+from app.settings import Settings, _readable_env_file, load_settings_lenient
 
 
 def test_unreadable_env_file_is_ignored(tmp_path, monkeypatch) -> None:
@@ -39,13 +39,9 @@ def test_missing_env_file_is_ignored(tmp_path, monkeypatch) -> None:
 
 def test_python_config_file_supplies_non_secret_settings(tmp_path, monkeypatch) -> None:
     config_file = tmp_path / "config.py"
-    config_file.write_text(
-        "SETTINGS = {'slack_webhook_url': 'https://hooks.slack.com/services/a/b/c', "
-        "'worker_poll_seconds': 7}\n"
-    )
+    config_file.write_text("SETTINGS = {'worker_poll_seconds': 7}\n")
     monkeypatch.setenv("BOT_CONFIG_FILE", str(config_file))
     settings = Settings(github_webhook_secret="s", google_api_key="key")
-    assert settings.slack_webhook_url is not None
     assert settings.worker_poll_seconds == 7
 
 

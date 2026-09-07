@@ -6,7 +6,6 @@ use; everything else depends on the ``LLMProvider`` protocol.
 
 from __future__ import annotations
 
-from app.config import Settings
 from app.errors import ConfigError
 from app.llm.base import (
     SYSTEM_PROMPT,
@@ -17,6 +16,7 @@ from app.llm.base import (
 )
 from app.llm.google_provider import GoogleProvider
 from app.llm.null_provider import NullProvider
+from app.settings import Settings
 
 __all__ = [
     "SYSTEM_PROMPT",
