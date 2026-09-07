@@ -11,7 +11,7 @@ fail() {
 }
 
 require_command() {
-  command -v "$1" >/dev/null 2>&1 || fail "'$1' is required. Install Docker Engine and the Docker Compose plugin."
+  command -v "$1" >/dev/null 2>&1 || fail "'$1' is required but was not found."
 }
 
 env_value() {
@@ -30,10 +30,11 @@ require_env_value() {
 }
 
 require_command docker
+require_command curl
 docker compose version >/dev/null 2>&1 || fail "Docker Compose plugin is required."
 
 [ -f .env ] || fail "Missing .env. Create it with: cp .env.example .env"
-[ -f config.py ] || fail "Missing config.py. Create it with: cp config.py.example config.py"
+[ -f config.py ] || fail "Missing config.py. Restore the committed file with: git restore config.py"
 [ -f id_ed25519 ] || fail "Missing id_ed25519. Add the SSH private key that can read your GitHub repositories."
 
 chmod 600 id_ed25519
