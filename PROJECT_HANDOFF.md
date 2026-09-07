@@ -45,8 +45,9 @@ cannot be completed from this workspace alone.
 - Give this machine access to that repository and provide its SSH or HTTPS URL
   so `main` can be pushed.
 - Create a GitHub webhook secret and configure a push-event webhook.
-- Create a read-only GitHub deploy key (or machine-user access) for every
-  repository the bot will analyse.
+- Grant the existing SSH key read access to every repository the bot will
+  analyse, either through its GitHub user account or a read-only deploy-key
+  registration.
 - Create a Slack incoming webhook, if Slack notifications are required.
 - Create a Google AI Studio or OpenAI API key for production summaries.
 - Choose a public hostname, TLS certificate, and deployment host.
@@ -63,8 +64,8 @@ cannot be completed from this workspace alone.
 3. Set the required values in the deployment environment:
    `GITHUB_WEBHOOK_SECRET`, `SLACK_WEBHOOK_URL`, `LLM_PROVIDER`, and either
    `GOOGLE_API_KEY` or `OPENAI_API_KEY`.
-4. Add the bot's read-only deploy key to each source repository that Git must
-   mirror and analyse.
+4. Grant the existing SSH key read access to each source repository that Git
+   must mirror and analyse.
 5. Configure a GitHub push webhook to:
    `https://YOUR-DOMAIN/webhooks/github`.
 6. Bootstrap each source repository before enabling its webhook. The exact
@@ -94,7 +95,7 @@ cannot be completed from this workspace alone.
 | `SLACK_WEBHOOK_URL` | In Slack, create an app at <https://api.slack.com/apps>, enable **Incoming Webhooks**, add a webhook to the channel that should receive summaries, then copy its URL. |
 | `GOOGLE_API_KEY` | Go to <https://aistudio.google.com/apikey>, sign in with the Google account that will pay for usage, create an API key, then copy it into the environment file. Use `LLM_PROVIDER=google`. |
 | `OPENAI_API_KEY` | Go to <https://platform.openai.com/api-keys>, create a secret API key, then copy it into the environment file. Use `LLM_PROVIDER=openai`; leave `GOOGLE_API_KEY` empty. |
-| `GIT_SSH_COMMAND` | This is the command Git uses for the read-only deploy key. First create the key with `ssh-keygen -t ed25519 -f deploy-ssh/id_ed25519 -C "git-change-bot"`; then add `deploy-ssh/id_ed25519.pub` to every source repository under **Settings → Deploy keys** without write access. Point this setting to the private-key path used by your deployment method. |
+| `GIT_SSH_COMMAND` | This is the command Git uses for the existing SSH key. The VM service uses its protected copy at `/var/lib/git-change-bot/.ssh/id_ed25519`. Grant the matching public key read access in GitHub, either through a GitHub user or under **Settings → Deploy keys** without write access. |
 | `BOT_DATA_DIR` | Use `/var/lib/git-change-bot` for systemd. Docker Compose already uses this path inside the container and stores it in a persistent named volume. |
 
 ### GitHub webhook URL

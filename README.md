@@ -39,6 +39,23 @@ Recommended tests
 [ View Diff ]
 ```
 
+## Current VM deployment
+
+This installation is deployed on the current VM with systemd:
+
+| Component | Location or status |
+|---|---|
+| Application code | `/opt/git-change-bot` |
+| Configuration | `/etc/git-change-bot.env` (root-owned, mode `640`) |
+| Persistent queue, mirrors, and indexes | `/var/lib/git-change-bot` |
+| Web service | `git-change-bot-web.service`, bound to `127.0.0.1:8088` |
+| Background worker | `git-change-bot-worker.service` |
+| Local health check | `curl -sS http://127.0.0.1:8088/health` |
+
+Both services are enabled to start after a VM reboot. A public domain, TLS
+certificate, Nginx configuration, and GitHub webhook are still required before
+GitHub can reach this installation.
+
 ---
 
 ## 1. Architecture
@@ -229,15 +246,27 @@ Layout that the bot creates and owns:
 
 ## 6. GitHub read-only deploy key
 
-Generate a key **as the `gitbot` user** and register it on the repository as a
-read-only deploy key (Settings → Deploy keys → Add deploy key; leave *Allow
-write access* unchecked).
+This VM currently reuses its existing SSH key. The service account has a
+protected copy at `/var/lib/git-change-bot/.ssh/id_ed25519`; do not place the
+private key in the code directory or commit it.
+
+```bash
+sudo -u gitbot ssh-keygen -y \
+    -f /var/lib/git-change-bot/.ssh/id_ed25519
+```
+
+Add the resulting public key to GitHub. You can either grant the corresponding
+GitHub user read access to the repositories, or register it as a read-only
+deploy key under **Settings → Deploy keys**. GitHub must accept the key before
+the bot can fetch repository mirrors.
+
+For a fresh deployment that does not have an existing key to reuse, generate a
+dedicated key as `gitbot` instead:
 
 ```bash
 sudo -u gitbot ssh-keygen -t ed25519 -N '' \
     -f /var/lib/git-change-bot/.ssh/id_ed25519 \
     -C "git-change-bot@$(hostname)"
-
 sudo cat /var/lib/git-change-bot/.ssh/id_ed25519.pub
 ```
 
@@ -501,6 +530,9 @@ The Compose stack uses one persistent named volume for the SQLite queue,
 mirrors, indexes, and locks. Put TLS termination in front of port 8088 (for
 example with the Nginx configuration below). Do not expose that port directly
 to the internet.
+
+The active VM deployment uses systemd, not Docker Compose. Keep Compose for a
+future portable deployment or development environment.
 
 ---
 
