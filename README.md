@@ -1,94 +1,211 @@
 # GitHub Change Bot
 
-GitHub Change Bot watches GitHub pushes and sends a short explanation of each
-code change to Slack. It uses the Git diff as the source of truth and sends
-only the changed code plus small surrounding context to Gemini or OpenAI.
-
-## What happens after a push
+GitHub Change Bot watches code pushes and posts a clear summary to Slack. It
+uses the real Git diff, relevant nearby code, and Gemini or OpenAI to explain
+what changed and why it matters.
 
 ```mermaid
 flowchart LR
     G[GitHub push] --> W[Webhook API]
-    W --> Q[(SQLite queue)]
+    W --> Q[(Queue)]
     Q --> R[Worker]
-    R --> D[Git diff and context]
-    D --> L[Gemini or OpenAI]
-    L --> S[Slack summary]
+    R --> D[Git diff]
+    D --> A[Gemini or OpenAI]
+    A --> S[Slack]
 ```
 
-The webhook replies quickly. Git, AI, and Slack work happens in the background
-worker, so GitHub does not wait for a slow AI request.
+The webhook responds immediately. The worker handles Git, AI, and Slack in
+the background, so GitHub never waits for a long analysis.
 
-## What you need
+## Project files
 
-- A Linux VM with Python 3.12, Git, rsync, and curl.
-- A GitHub repository for this bot.
-- An SSH key that can read each GitHub repository you want to analyse.
+Keep the files you manage in the project root:
+
+```text
+github-change-bot/
+├── .env                 your private configuration; never commit it
+├── id_ed25519           existing GitHub-readable SSH private key; never commit it
+├── id_ed25519.pub       public half of the SSH key
+├── README.md            this guide
+├── scripts/install_systemd.sh
+├── compose.yaml
+└── app/
+```
+
+`.env`, `id_ed25519`, and `id_ed25519.pub` are ignored by Git. During systemd
+installation, the installer copies them into protected service locations. The
+original root-project files remain unchanged.
+
+## Before you start
+
+You need:
+
+- A Linux VM with Python 3.12, Git, rsync, curl, and systemd.
+- A GitHub account and a repository you want the bot to watch.
+- An SSH key with read access to that repository.
 - A Google Gemini API key or OpenAI API key.
-- A Slack incoming webhook URL.
-- A public HTTPS URL for GitHub webhooks. For free testing, use the included
-  Cloudflare Quick Tunnel setup.
+- A Slack workspace and a channel for bot summaries.
 
-## Fast setup on a Linux VM
-
-Clone the project:
+## 1. Clone the project
 
 ```bash
 git clone git@github.com:jvishwa-sqy/github-change-bot.git
 cd github-change-bot
 ```
 
-Create a private environment file. Do not commit this file.
+## 2. Put your SSH key in the project root
+
+Copy the existing key that can clone your GitHub repositories:
 
 ```bash
-cp .env.example /secure/git-change-bot.env
-chmod 600 /secure/git-change-bot.env
+cp /path/to/your/existing/id_ed25519 ./id_ed25519
+cp /path/to/your/existing/id_ed25519.pub ./id_ed25519.pub
+chmod 600 ./id_ed25519
+chmod 644 ./id_ed25519.pub
 ```
 
-Edit `/secure/git-change-bot.env` and fill these required values:
+Check that the key can access GitHub:
+
+```bash
+ssh -i ./id_ed25519 -o IdentitiesOnly=yes -T git@github.com
+```
+
+Expected output includes your GitHub username. If you see `Permission denied`,
+add `id_ed25519.pub` to GitHub first:
+
+- For one repository: **Repository → Settings → Deploy keys → Add deploy key**.
+  Leave write access disabled.
+- For several repositories: add the key to a GitHub user that has read access
+  to all of them.
+
+## 3. Create `.env` in the project root
+
+```bash
+cp .env.example .env
+chmod 600 .env
+```
+
+Open `.env` and set the required values below.
 
 ```env
-GITHUB_WEBHOOK_SECRET=generate-a-long-random-secret
+# GitHub verifies every webhook with this value.
+GITHUB_WEBHOOK_SECRET=replace-with-a-random-secret
+
+# Where summaries are sent.
 SLACK_WEBHOOK_URL=https://hooks.slack.com/services/...
+
+# Choose one AI provider.
 LLM_PROVIDER=google
-GOOGLE_API_KEY=your-google-api-key
+GOOGLE_API_KEY=replace-with-your-google-api-key
+GOOGLE_MODEL=gemini-2.5-flash
+GOOGLE_THINKING_BUDGET=0
 ```
 
-Generate a webhook secret if needed:
+Generate a secure GitHub webhook secret:
 
 ```bash
 openssl rand -hex 32
 ```
 
-Install the bot. Replace the SSH key path with the existing key that has
-GitHub read access.
+If you use OpenAI instead of Google, use this part of `.env`:
 
-```bash
-sudo ./scripts/install_systemd.sh \
-  --env-file /secure/git-change-bot.env \
-  --ssh-key /secure/id_ed25519
+```env
+LLM_PROVIDER=openai
+OPENAI_API_KEY=replace-with-your-openai-api-key
+OPENAI_MODEL=gpt-5
 ```
 
-The installer creates and starts two services:
+Do not set both providers unless you intend to keep one unused. The value of
+`LLM_PROVIDER` decides which API key the bot uses.
+
+## 4. Create the Slack webhook
+
+1. Go to <https://api.slack.com/apps> and select **Create New App**.
+2. Choose **From scratch**, give it a name such as `GitHub Change Bot`, and
+   select your Slack workspace.
+3. Open **Incoming Webhooks** in the left menu.
+4. Turn on **Activate Incoming Webhooks**.
+5. Click **Add New Webhook to Workspace**.
+6. Select the Slack channel that should receive code-change summaries.
+7. Click **Allow**.
+8. Copy the generated webhook URL. It starts with
+   `https://hooks.slack.com/services/`.
+9. Paste it into `.env` as `SLACK_WEBHOOK_URL`.
+
+Treat the Slack webhook URL like a password. Anyone with it can post messages
+to that Slack channel. If it is exposed, delete the webhook in Slack and
+create a new one.
+
+## 5. Get an AI API key
+
+### Google Gemini
+
+1. Go to <https://aistudio.google.com/apikey>.
+2. Create an API key.
+3. Copy it into `.env` as `GOOGLE_API_KEY`.
+4. Keep `LLM_PROVIDER=google`.
+
+### OpenAI
+
+1. Go to <https://platform.openai.com/api-keys>.
+2. Create a secret API key.
+3. Copy it into `.env` as `OPENAI_API_KEY`.
+4. Set `LLM_PROVIDER=openai`.
+
+Treat AI API keys as passwords. Rotate a key immediately if it is shared in a
+chat, committed, or otherwise exposed.
+
+## 6. Install and start the bot
+
+From the project root, run:
+
+```bash
+sudo ./scripts/install_systemd.sh
+```
+
+The installer uses `./.env` and `./id_ed25519` by default. It creates:
+
+```text
+/opt/git-change-bot                 deployed application code
+/etc/git-change-bot.env             protected runtime configuration
+/var/lib/git-change-bot             queue, Git mirrors, indexes, service key
+```
+
+It also starts two services:
 
 ```text
 git-change-bot-web       receives GitHub webhooks
-git-change-bot-worker    analyses queued pushes
+git-change-bot-worker    analyses pushes and sends Slack summaries
 ```
 
-Check that both work:
+Check the installation:
 
 ```bash
 curl -sS http://127.0.0.1:8088/health
 sudo systemctl status git-change-bot-web git-change-bot-worker --no-pager
 ```
 
-## Free public URL for testing
+Expected health response:
 
-GitHub must reach the webhook over public HTTPS. If you do not have a domain,
-use a Cloudflare Quick Tunnel. It is free, but its URL changes after a restart.
+```json
+{"status":"ok"}
+```
 
-Install Cloudflare Tunnel on the VM, then run:
+## 7. Get a free public HTTPS URL for testing
+
+GitHub must reach the bot over public HTTPS. If you do not have a domain, use
+a free Cloudflare Quick Tunnel. Its URL changes after the tunnel restarts, so
+use it for testing only.
+
+Install `cloudflared` on Ubuntu or Debian:
+
+```bash
+curl --fail --location --output /tmp/cloudflared.deb \
+  https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+sudo dpkg -i /tmp/cloudflared.deb
+```
+
+Start the tunnel:
 
 ```bash
 cloudflared tunnel --url http://127.0.0.1:8088
@@ -100,43 +217,41 @@ It prints a URL similar to:
 https://example-name.trycloudflare.com
 ```
 
-Keep this process running. Your GitHub webhook URL is:
+Keep the command running. Your webhook URL is:
 
 ```text
 https://example-name.trycloudflare.com/webhooks/github
 ```
 
-Use a real domain and reverse proxy when the bot moves beyond testing.
+## 8. Add the GitHub webhook
 
-## Add the GitHub webhook
-
-Open the repository you want to monitor in GitHub:
+Open the repository you want the bot to monitor:
 
 ```text
 Repository → Settings → Webhooks → Add webhook
 ```
 
-Set these values:
+Fill the form like this:
 
-| Field | Value |
+| GitHub field | Value |
 |---|---|
-| Payload URL | `https://YOUR-PUBLIC-URL/webhooks/github` |
+| Payload URL | Your public URL ending in `/webhooks/github` |
 | Content type | `application/json` |
-| Secret | Same value as `GITHUB_WEBHOOK_SECRET` |
-| SSL verification | Enable |
+| Secret | The `GITHUB_WEBHOOK_SECRET` from `.env` |
+| SSL verification | Enable SSL verification |
 | Events | Just the push event |
-| Active | Enabled |
+| Active | Checked |
 
-GitHub sends a ping immediately. A successful delivery returns:
+GitHub sends a ping after you save. A successful delivery has HTTP status 200
+and response body:
 
 ```json
 {"status":"pong"}
 ```
 
-## Prepare a repository for analysis
+## 9. Bootstrap the repository
 
-Run this once for every repository you want the bot to analyse. Replace the
-repository ID and URL.
+Run this once for each repository you monitor. Replace the placeholders:
 
 ```bash
 sudo -u gitbot env BOT_ENV_FILE=/etc/git-change-bot.env \
@@ -147,22 +262,22 @@ sudo -u gitbot env BOT_ENV_FILE=/etc/git-change-bot.env \
   --ref main
 ```
 
-Find the numeric repository ID at:
+Find the numeric ID at:
 
 ```text
 https://api.github.com/repos/OWNER/REPOSITORY
 ```
 
-The bootstrap command creates a bare Git mirror and a lightweight repository
-map. It does not call the AI model or send Slack messages.
+Bootstrap only creates the Git mirror and repository map. It does not call AI
+or send Slack messages.
 
-## Test the full flow
+## 10. Test it
 
 Make a small real change in the monitored repository and push it:
 
 ```bash
 git add .
-git commit -m "Test change bot"
+git commit -m "Test GitHub Change Bot"
 git push origin main
 ```
 
@@ -172,7 +287,7 @@ Watch the worker:
 sudo journalctl -u git-change-bot-worker -f
 ```
 
-Expected flow:
+Expected result:
 
 ```text
 push enqueued → job started → diff computed → AI response → Slack notified → job completed
@@ -180,16 +295,17 @@ push enqueued → job started → diff computed → AI response → Slack notifi
 
 ## Docker option
 
-Docker Compose is useful when you do not want to install systemd services.
+If you prefer Docker instead of systemd:
 
 ```bash
-cp .env.example .env
-# Fill .env with the same required values.
-
-export BOT_SSH_DIR=/secure/directory-containing-id_ed25519
+export BOT_SSH_DIR="$PWD"
 docker compose up --build -d
 curl -sS http://127.0.0.1:8088/health
 ```
+
+Docker reads `.env` and copies the root-project `id_ed25519` key into the
+container only while it is running. The key is not stored in the image or
+Docker volume.
 
 For a free temporary tunnel with Docker:
 
@@ -200,29 +316,26 @@ docker compose -f compose.yaml -f compose.tunnel.yaml logs tunnel
 
 ## Move to another VM
 
-The source code does not store secrets, Git mirrors, SQLite data, or private
-keys. To move the bot:
+1. Clone this repository on the new VM.
+2. Securely copy `.env`, `id_ed25519`, and `id_ed25519.pub` into the new
+   project root.
+3. Run `sudo ./scripts/install_systemd.sh`.
+4. Bootstrap each monitored repository on the new VM.
+5. Update the GitHub webhooks with the new public URL.
+6. Stop the services on the old VM only after the new VM works.
 
-1. Clone the repository on the new VM.
-2. Copy the private environment file through a secure channel.
-3. Provide an SSH key with GitHub read access.
-4. Run `scripts/install_systemd.sh` on the new VM.
-5. Bootstrap the repositories there.
-6. Change each GitHub webhook to the new public URL.
-7. Stop the web, worker, and tunnel services on the old VM after confirming
-   the new VM works.
-
-More implementation details are in [DEPLOYMENT.md](DEPLOYMENT.md).
-
-## Common checks
+## Useful commands
 
 ```bash
-# Health and queue count
+# Health and queue counts
 curl -sS http://127.0.0.1:8088/ready
 
 # Service state
 sudo systemctl is-active git-change-bot-web git-change-bot-worker
 
-# Recent errors
+# Recent worker logs
 sudo journalctl -u git-change-bot-worker -n 100 --no-pager
+
+# Restart after changing runtime configuration
+sudo systemctl restart git-change-bot-web git-change-bot-worker
 ```

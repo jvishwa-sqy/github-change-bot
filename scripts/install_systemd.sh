@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 # Install or upgrade git-change-bot on any Ubuntu/Debian VM.
 #
-# sudo ./scripts/install_systemd.sh \
-#   --env-file /secure/path/git-change-bot.env \
-#   --ssh-key /secure/path/id_ed25519
+# By default this script uses .env and id_ed25519 from the project root.
 
 set -euo pipefail
 
@@ -14,12 +12,12 @@ start_services=true
 
 usage() {
     cat <<'EOF'
-Usage: sudo ./scripts/install_systemd.sh --env-file FILE --ssh-key FILE [options]
+Usage: sudo ./scripts/install_systemd.sh [options]
 
 Options:
   --source DIR       Project source directory (default: repository containing this script)
-  --env-file FILE    Runtime environment file; copied to /etc/git-change-bot.env
-  --ssh-key FILE     Existing private key with read access to source repositories
+  --env-file FILE    Runtime environment file (default: SOURCE/.env)
+  --ssh-key FILE     Existing private key (default: SOURCE/id_ed25519)
   --no-start         Install files without starting systemd services
   -h, --help         Show this help
 EOF
@@ -40,11 +38,8 @@ if [ "${EUID}" -ne 0 ]; then
     echo "Run this installer with sudo." >&2
     exit 1
 fi
-if [ -z "$env_file" ] || [ -z "$ssh_key" ]; then
-    echo "Both --env-file and --ssh-key are required." >&2
-    usage >&2
-    exit 2
-fi
+env_file="${env_file:-$source_dir/.env}"
+ssh_key="${ssh_key:-$source_dir/id_ed25519}"
 
 source_dir="$(realpath -e "$source_dir")"
 env_file="$(realpath -e "$env_file")"
