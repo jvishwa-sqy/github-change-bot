@@ -53,6 +53,40 @@ cannot be completed from this workspace alone.
 7. Make a small test push and confirm the worker completes the job and Slack
    receives the change summary.
 
+## How to obtain the required `.env` values
+
+| Setting | How to obtain it |
+|---|---|
+| `GITHUB_WEBHOOK_SECRET` | Generate a long random value with `openssl rand -hex 32`. Keep it private. Enter the exact same value in GitHub when adding the repository webhook under **Settings → Webhooks → Add webhook → Secret**. |
+| `SLACK_WEBHOOK_URL` | In Slack, create an app at <https://api.slack.com/apps>, enable **Incoming Webhooks**, add a webhook to the channel that should receive summaries, then copy its URL. |
+| `GOOGLE_API_KEY` | Go to <https://aistudio.google.com/apikey>, sign in with the Google account that will pay for usage, create an API key, then copy it into the environment file. Use `LLM_PROVIDER=google`. |
+| `OPENAI_API_KEY` | Go to <https://platform.openai.com/api-keys>, create a secret API key, then copy it into the environment file. Use `LLM_PROVIDER=openai`; leave `GOOGLE_API_KEY` empty. |
+| `GIT_SSH_COMMAND` | This is the command Git uses for the read-only deploy key. First create the key with `ssh-keygen -t ed25519 -f deploy-ssh/id_ed25519 -C "git-change-bot"`; then add `deploy-ssh/id_ed25519.pub` to every source repository under **Settings → Deploy keys** without write access. Point this setting to the private-key path used by your deployment method. |
+| `BOT_DATA_DIR` | Use `/var/lib/git-change-bot` for systemd. Docker Compose already uses this path inside the container and stores it in a persistent named volume. |
+
+### GitHub webhook URL
+
+After the bot is deployed behind HTTPS, add this webhook to each repository
+that should be analysed:
+
+```text
+https://YOUR-DOMAIN/webhooks/github
+```
+
+In GitHub, select **Settings → Webhooks → Add webhook**, use content type
+`application/json`, enter `GITHUB_WEBHOOK_SECRET` as the secret, and select
+only the **Pushes** event. GitHub sends a ping immediately; a working bot
+returns `{"status":"pong"}`.
+
+### Generate a secure webhook secret
+
+```bash
+openssl rand -hex 32
+```
+
+Paste the output into `.env` as `GITHUB_WEBHOOK_SECRET`. Do not commit `.env`
+or send its contents in chat.
+
 ## Useful references
 
 - Deployment and operational guide: `README.md`
