@@ -10,7 +10,6 @@ from app.redaction import redact, redact_findings
 @pytest.mark.parametrize(
     ("text", "secret"),
     [
-        ('OPENAI_API_KEY = "sk-proj-abcdefghijklmnopqrstuvwxyz123"', "sk-proj-abcdef"),
         ("aws_key = AKIAIOSFODNN7EXAMPLE", "AKIAIOSFODNN7EXAMPLE"),
         ("token = ghp_abcdefghijklmnopqrstuvwxyz0123456789", "ghp_abcdefghij"),
         ("gitlab = glpat-abcdefghijklmnopqrst", "glpat-abcdefghij"),

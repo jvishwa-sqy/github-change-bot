@@ -18,7 +18,6 @@ from app.llm.base import (
     parse_summary_json,
 )
 from app.llm.google_provider import GoogleProvider, _gemini_schema
-from app.llm.openai_provider import OpenAIProvider, _strict_schema
 from app.models import (
     CHANGE_SUMMARY_JSON_SCHEMA,
     ChangeAnalysisRequest,
@@ -78,12 +77,6 @@ def test_gemini_schema_has_no_unsupported_keywords() -> None:
     assert "$defs" not in serialised
     assert "additionalProperties" not in serialised
     assert schema["propertyOrdering"][0] == "summary"
-
-
-def test_openai_strict_schema_is_closed() -> None:
-    schema = _strict_schema()
-    assert schema["additionalProperties"] is False
-    assert set(schema["required"]) == set(ChangeSummary.model_fields)
 
 
 # ------------------------------------------------------------------ parsing
@@ -217,44 +210,6 @@ async def test_google_provider_handles_truncated_output() -> None:
             await provider.summarize_change(make_request())
 
 
-async def test_openai_provider_uses_the_responses_api() -> None:
-    seen: dict = {}
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        seen["path"] = request.url.path
-        seen["body"] = json.loads(request.content)
-        return httpx.Response(200, json={"output_text": json.dumps(VALID_SUMMARY)})
-
-    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
-        provider = OpenAIProvider(api_key="k", model="gpt-5", client=http)
-        summary = await provider.summarize_change(make_request())
-
-    assert summary.risk == "medium"
-    assert seen["path"] == "/v1/responses"
-    assert seen["body"]["text"]["format"]["type"] == "json_schema"
-    assert seen["body"]["text"]["format"]["strict"] is True
-
-
-async def test_openai_provider_reads_nested_output() -> None:
-    def handler(_request: httpx.Request) -> httpx.Response:
-        return httpx.Response(
-            200,
-            json={
-                "output": [
-                    {
-                        "role": "assistant",
-                        "content": [{"type": "output_text", "text": json.dumps(VALID_SUMMARY)}],
-                    }
-                ],
-                "usage": {"input_tokens": 10, "output_tokens": 5},
-            },
-        )
-
-    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
-        provider = OpenAIProvider(api_key="k", client=http)
-        assert (await provider.summarize_change(make_request())).risk == "medium"
-
-
 async def test_null_provider_makes_no_calls(settings) -> None:
     provider = build_provider(settings)
     assert provider.name == "null"
@@ -277,4 +232,3 @@ def test_build_provider_selects_google(settings) -> None:
 
 def test_provider_interface_is_satisfied() -> None:
     assert issubclass(GoogleProvider, BaseLLMProvider)
-    assert issubclass(OpenAIProvider, BaseLLMProvider)

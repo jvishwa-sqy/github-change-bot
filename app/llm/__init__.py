@@ -17,7 +17,6 @@ from app.llm.base import (
 )
 from app.llm.google_provider import GoogleProvider
 from app.llm.null_provider import NullProvider
-from app.llm.openai_provider import OpenAIProvider
 
 __all__ = [
     "SYSTEM_PROMPT",
@@ -25,7 +24,6 @@ __all__ = [
     "GoogleProvider",
     "LLMProvider",
     "NullProvider",
-    "OpenAIProvider",
     "build_provider",
     "build_user_prompt",
     "parse_summary_json",
@@ -45,16 +43,6 @@ def build_provider(settings: Settings) -> LLMProvider:
                 timeout=settings.llm_timeout_seconds,
                 max_retries=settings.llm_max_retries,
                 thinking_budget=settings.google_thinking_budget,
-            )
-        case "openai":
-            if settings.openai_api_key is None:
-                raise ConfigError("OPENAI_API_KEY is not set")
-            return OpenAIProvider(
-                api_key=settings.openai_api_key.get_secret_value(),
-                model=settings.openai_model,
-                api_base=settings.openai_api_base,
-                timeout=settings.llm_timeout_seconds,
-                max_retries=settings.llm_max_retries,
             )
         case "null":
             return NullProvider()

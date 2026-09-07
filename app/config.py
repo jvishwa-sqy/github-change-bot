@@ -110,7 +110,7 @@ class Settings(BaseSettings):
     notify_on_branch_create: bool = True
 
     # ------------------------------------------------------------------- LLM
-    llm_provider: Literal["google", "openai", "null"] = "google"
+    llm_provider: Literal["google", "null"] = "google"
     llm_timeout_seconds: float = 120.0
     llm_max_retries: int = 2
 
@@ -121,10 +121,6 @@ class Settings(BaseSettings):
     # short, well-scoped task like change summarisation. Raise for harder
     # analysis; set to null to use the model default.
     google_thinking_budget: int | None = 0
-
-    openai_api_key: SecretStr | None = None
-    openai_model: str = "gpt-5"
-    openai_api_base: str = "https://api.openai.com/v1"
 
     # ------------------------------------------------------------- Storage
     bot_data_dir: Path = Path("/var/lib/git-change-bot")
@@ -198,8 +194,6 @@ class Settings(BaseSettings):
     def _validate_provider_credentials(self) -> Settings:
         if self.llm_provider == "google" and not self.google_api_key:
             raise ValueError("LLM_PROVIDER=google requires GOOGLE_API_KEY to be set")
-        if self.llm_provider == "openai" and not self.openai_api_key:
-            raise ValueError("LLM_PROVIDER=openai requires OPENAI_API_KEY to be set")
         if self.require_webhook_signature and not (
             self.github_webhook_secret or self.github_legacy_secret_token
         ):

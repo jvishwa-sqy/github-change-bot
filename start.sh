@@ -42,9 +42,8 @@ require_env_value SLACK_WEBHOOK_URL
 llm_provider="$(env_value LLM_PROVIDER)"
 case "$llm_provider" in
   google) require_env_value GOOGLE_API_KEY ;;
-  openai) require_env_value OPENAI_API_KEY ;;
   null) ;;
-  *) fail "LLM_PROVIDER must be google, openai, or null in .env." ;;
+  *) fail "LLM_PROVIDER must be google or null in .env." ;;
 esac
 
 export BOT_SSH_DIR="$project_dir"

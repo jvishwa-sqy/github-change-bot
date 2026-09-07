@@ -1,8 +1,7 @@
 """LLM provider interface and prompt construction.
 
-The rest of the application only ever sees ``LLMProvider``; swapping Google for
-OpenAI, Anthropic, Azure or a self-hosted model means adding one subclass that
-implements ``_complete`` and registering it in ``app/llm/__init__.py``.
+The rest of the application only ever sees ``LLMProvider``; the concrete
+backend stays isolated from analysis and queue handling.
 """
 
 from __future__ import annotations

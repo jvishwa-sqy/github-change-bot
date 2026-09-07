@@ -63,11 +63,6 @@ _PATTERNS: list[tuple[str, re.Pattern[str], str | Callable[[re.Match[str]], str]
         REDACTED,
     ),
     (
-        "openai_key",
-        re.compile(r"\bsk-(?:proj-|svcacct-)?[A-Za-z0-9_\-]{20,}\b"),
-        REDACTED,
-    ),
-    (
         "google_api_key",
         re.compile(r"\bAIza[0-9A-Za-z_\-]{35}\b"),
         REDACTED,

@@ -1,7 +1,7 @@
 # GitHub Change Bot
 
 GitHub Change Bot turns GitHub pushes into concise Slack summaries. It reads
-the real Git diff, adds limited nearby code context, asks Gemini or OpenAI for
+the real Git diff, adds limited nearby code context, asks Gemini for
 an explanation, and posts a polished Slack card with the risk level, change
 size, key changes, affected areas, and GitHub diff link.
 
@@ -11,7 +11,7 @@ flowchart LR
     W --> Q[(SQLite queue)]
     Q --> R[Worker]
     R --> D[Git diff]
-    D --> A[Gemini or OpenAI]
+    D --> A[Gemini]
     A --> S[Slack]
 ```
 
@@ -26,7 +26,7 @@ Cloudflare HTTPS tunnel together.
   your VM operating system.
 - A GitHub repository to monitor.
 - An SSH key that can read that repository.
-- A Gemini API key or OpenAI API key.
+- A Gemini API key.
 - A Slack incoming webhook URL.
 
 Check Docker before continuing:
@@ -106,16 +106,7 @@ Generate the GitHub secret with:
 openssl rand -hex 32
 ```
 
-To use OpenAI instead, set:
-
-```env
-LLM_PROVIDER=openai
-OPENAI_API_KEY=replace-with-your-openai-api-key
-OPENAI_MODEL=gpt-5
-```
-
-`LLM_PROVIDER` selects the active provider. Do not share `.env`, API keys,
-Slack webhook URLs, or the private SSH key.
+Do not share `.env`, API keys, Slack webhook URLs, or the private SSH key.
 
 ## 4. Create the Slack webhook
 
@@ -145,13 +136,6 @@ If the URL is ever exposed, delete that webhook in Slack and create a new one.
 2. Create an API key.
 3. Put it in `.env` as `GOOGLE_API_KEY`.
 4. Keep `LLM_PROVIDER=google`.
-
-### OpenAI
-
-1. Open <https://platform.openai.com/api-keys>.
-2. Create a secret API key.
-3. Put it in `.env` as `OPENAI_API_KEY`.
-4. Set `LLM_PROVIDER=openai`.
 
 ## 6. Start the bot
 
