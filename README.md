@@ -17,6 +17,12 @@ flowchart LR
 The webhook responds immediately. The worker handles Git, AI, and Slack in
 the background, so GitHub never waits for a long analysis.
 
+## Slack notification
+
+Each notification presents the risk level, branch, author, change size,
+summary, key changes, affected areas, and a direct GitHub diff link in one
+compact Slack card.
+
 ## Project files
 
 Keep the files you manage in the project root:
