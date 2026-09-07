@@ -19,9 +19,9 @@ the background, so GitHub never waits for a long analysis.
 
 ## Slack notification
 
-Each notification presents the risk level, branch, author, change size,
-summary, key changes, affected areas, and a direct GitHub diff link in one
-compact Slack card.
+Each notification presents a risk-led header, branch, author, change size,
+summary, key changes, affected areas, compact commit details, and a direct
+GitHub diff link in one Slack card.
 
 ## Project files
 
@@ -53,6 +53,15 @@ You need:
 - A Slack workspace and a channel for bot summaries.
 
 ## 1. Clone the project
+
+On a new Ubuntu or Debian VM, install the required packages first:
+
+```bash
+sudo apt update
+sudo apt install -y python3.12 python3.12-venv git rsync curl
+```
+
+Then clone the project:
 
 ```bash
 git clone git@github.com:jvishwa-sqy/github-change-bot.git
@@ -258,6 +267,8 @@ and response body:
 {"status":"pong"}
 ```
 
+Repeat this step for every repository the bot should monitor.
+
 ## 9. Bootstrap the repository
 
 Run this once for each repository you monitor. Replace the placeholders:
@@ -279,6 +290,8 @@ https://api.github.com/repos/OWNER/REPOSITORY
 
 Bootstrap only creates the Git mirror and repository map. It does not call AI
 or send Slack messages.
+
+Repeat this step for every monitored repository before its first push.
 
 ## 10. Test it
 
@@ -314,12 +327,12 @@ curl -sS http://127.0.0.1:8088/health
 
 Docker reads `.env` and copies the root-project `id_ed25519` key into the
 container only while it is running. The key is not stored in the image or
-Docker volume.
+Docker volume. The same command starts the `web`, `worker`, and free `tunnel`
+services.
 
-For a free temporary tunnel with Docker:
+Get the temporary public URL with:
 
 ```bash
-docker compose up --build -d
 docker compose logs tunnel
 ```
 
