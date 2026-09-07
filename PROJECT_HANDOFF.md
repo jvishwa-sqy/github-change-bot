@@ -33,9 +33,8 @@ The bot is deployed on this VM with systemd.
 | Permanent public HTTPS endpoint | Pending a domain, TLS certificate, Nginx configuration, and firewall rule |
 
 The existing SSH private key is reused through a protected service-account copy
-at `/var/lib/git-change-bot/.ssh/id_ed25519`. GitHub currently rejects that
-key, so it must be granted access before the worker can clone source
-repositories.
+at `/var/lib/git-change-bot/.ssh/id_ed25519`. It has confirmed read access to
+`jvishwa-sqy/github-change-bot`.
 
 The first monitored repository is prepared:
 
