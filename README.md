@@ -155,12 +155,16 @@ If the URL is ever exposed, delete that webhook in Slack and create a new one.
 
 ## 6. Start the bot
 
-From the project root:
+From the project root, start everything with the single startup command:
 
 ```bash
-export BOT_SSH_DIR="$PWD"
-docker compose up --build -d
+./start.sh
 ```
+
+It checks the required configuration, protects the SSH key permissions, builds
+the image, starts the services, waits for the webhook API, and prints the
+Cloudflare URL when it is available. Run it again after changing `.env` or
+pulling a new version of the project.
 
 Compose starts these services:
 
@@ -300,7 +304,7 @@ delete all queue and mirror data.
 1. Clone this repository on the new VM.
 2. Securely copy `.env`, `id_ed25519`, and `id_ed25519.pub` into the new
    project root.
-3. Run `export BOT_SSH_DIR="$PWD"` and `docker compose up --build -d`.
+3. Run `./start.sh`.
 4. Bootstrap every monitored repository.
 5. Update GitHub webhooks with the new tunnel URL.
 6. After testing the new VM, run `docker compose down` on the old VM.
