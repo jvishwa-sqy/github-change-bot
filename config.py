@@ -1,12 +1,8 @@
-"""Private runtime configuration for GitHub Change Bot.
-
-Copy this file to ``config.py`` and fill in the Slack webhook URL. The real
-``config.py`` is ignored by Git because Slack webhook URLs are secrets.
-"""
+"""Runtime configuration for GitHub Change Bot."""
 
 SETTINGS = {
     # --- Slack -------------------------------------------------------------
-    "slack_webhook_url": "https://hooks.slack.com/services/replace/me",
+    "slack_webhook_url": None,
     "slack_timeout_seconds": 10,
     "notify_on_ignored_only": False,
     "notify_on_branch_delete": True,

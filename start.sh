@@ -39,6 +39,7 @@ docker compose version >/dev/null 2>&1 || fail "Docker Compose plugin is require
 chmod 600 id_ed25519
 require_env_value GITHUB_WEBHOOK_SECRET
 require_env_value GOOGLE_API_KEY
+require_env_value SLACK_WEBHOOK_URL
 
 export BOT_SSH_DIR="$project_dir"
 docker compose config -q

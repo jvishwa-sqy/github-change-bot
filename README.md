@@ -48,7 +48,7 @@ Keep the private files you manage in the project root:
 ```text
 github-change-bot/
 ├── .env                 private configuration; never commit it
-├── config.py            private runtime configuration; never commit it
+├── config.py            runtime configuration
 ├── id_ed25519           GitHub-readable SSH private key; never commit it
 ├── id_ed25519.pub       public half of that key
 ├── README.md            this guide
@@ -56,7 +56,7 @@ github-change-bot/
 └── app/                 application code
 ```
 
-`.env`, `config.py`, `id_ed25519`, and `id_ed25519.pub` are ignored by Git.
+`.env`, `id_ed25519`, and `id_ed25519.pub` are ignored by Git.
 
 ## 2. Add the GitHub SSH key
 
@@ -82,24 +82,22 @@ If GitHub rejects the key, add `id_ed25519.pub` in GitHub:
 - Many repositories: add the key to a GitHub user with read access to all of
   those repositories.
 
-## 3. Create `.env` and `config.py`
+## 3. Create `.env`
 
 ```bash
 cp .env.example .env
-cp config.py.example config.py
 chmod 600 .env
-chmod 600 config.py
 ```
 
-`.env` contains only the two API secrets:
+`.env` contains the two API secrets and the Slack webhook URL:
 
 ```env
 GITHUB_WEBHOOK_SECRET=replace-with-a-random-secret
 GOOGLE_API_KEY=replace-with-your-google-api-key
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/...
 ```
 
-`config.py` contains the Slack webhook URL and every non-secret setting. It
-starts with sensible defaults; set `slack_webhook_url` to your Slack webhook.
+`config.py` contains every non-secret runtime setting.
 
 Generate the GitHub secret with:
 
@@ -107,8 +105,7 @@ Generate the GitHub secret with:
 openssl rand -hex 32
 ```
 
-Do not share `.env`, `config.py`, API keys, Slack webhook URLs, or the private
-SSH key.
+Do not share `.env`, API keys, Slack webhook URLs, or the private SSH key.
 
 ## 4. Create the Slack webhook
 
@@ -126,7 +123,7 @@ Turns GitHub code pushes into clear, AI-powered Slack change summaries.
 5. Click **Add New Webhook to Workspace**.
 6. Select the Slack channel for change summaries and click **Allow**.
 7. Copy the URL beginning with `https://hooks.slack.com/services/`.
-8. Paste it into `config.py` as `slack_webhook_url`.
+8. Paste it into `.env` as `SLACK_WEBHOOK_URL`.
 
 If the URL is ever exposed, delete that webhook in Slack and create a new one.
 
