@@ -30,5 +30,15 @@ services:
       web:
         condition: service_healthy
 
+  # Free public HTTPS URL for testing. Read the generated trycloudflare.com
+  # URL with: docker compose logs tunnel
+  tunnel:
+    image: ${CLOUDFLARED_IMAGE:-cloudflare/cloudflared:latest}
+    command: tunnel --no-autoupdate --url http://web:8088
+    depends_on:
+      web:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   bot-data:

@@ -310,9 +310,13 @@ Docker volume.
 For a free temporary tunnel with Docker:
 
 ```bash
-docker compose -f compose.yaml -f compose.tunnel.yaml up --build -d
-docker compose -f compose.yaml -f compose.tunnel.yaml logs tunnel
+docker compose up --build -d
+docker compose logs tunnel
 ```
+
+The logs contain a temporary `trycloudflare.com` URL. Add
+`/webhooks/github` to that URL when configuring GitHub. The URL changes if
+the tunnel container restarts.
 
 ## Move to another VM
 
