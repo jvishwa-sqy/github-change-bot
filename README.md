@@ -19,6 +19,9 @@ Docker Compose is the supported way to run this project. It starts the
 webhook API, background worker, persistent data volume, and a free temporary
 Cloudflare HTTPS tunnel together.
 
+The webhook receiver responds immediately, while the worker processes each
+change in the background.
+
 ## What you need
 
 - Docker Engine and the Docker Compose plugin. Follow the official
