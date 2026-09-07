@@ -29,7 +29,8 @@ The bot is deployed on this VM with systemd.
 | Web service | `git-change-bot-web.service`, active and enabled at boot |
 | Worker service | `git-change-bot-worker.service`, active and enabled at boot |
 | Local health endpoint | `http://127.0.0.1:8088/health` |
-| Public HTTPS endpoint | Pending a domain, TLS certificate, Nginx configuration, and firewall rule |
+| Temporary public HTTPS endpoint | `git-change-bot-tunnel.service` via Cloudflare Quick Tunnel |
+| Permanent public HTTPS endpoint | Pending a domain, TLS certificate, Nginx configuration, and firewall rule |
 
 The existing SSH private key is reused through a protected service-account copy
 at `/var/lib/git-change-bot/.ssh/id_ed25519`. GitHub currently rejects that
@@ -77,11 +78,14 @@ cannot be completed from this workspace alone.
    the bot will analyse, or add the key under the repository's **Settings →
    Deploy keys** with write access disabled. GitHub currently rejects this key
    when the service account tests it.
-2. Provide the public domain name that should receive GitHub webhooks. Point
-   its DNS record to this VM and allow inbound TCP ports 80 and 443 in the
-   cloud firewall. A TLS certificate is also required before the webhook can
-   be enabled.
-3. Provide the first repository's GitHub `owner/repository` name. Its numeric
+2. Configure the temporary Cloudflare URL as the GitHub webhook endpoint. Get
+   its current value with `sudo journalctl -u git-change-bot-tunnel --no-pager
+   -o cat`, then append `/webhooks/github`. The tunnel URL changes after a
+   restart, so update GitHub whenever that happens.
+3. For permanent use, provide a public domain name. Point its DNS record to
+   this VM and allow inbound TCP ports 80 and 443 in the cloud firewall. A TLS
+   certificate is required before replacing the temporary tunnel.
+4. Provide the first repository's GitHub `owner/repository` name. Its numeric
    repository ID and SSH URL are needed for the bootstrap command.
 
 ## How to obtain the required `.env` values
@@ -117,6 +121,13 @@ openssl rand -hex 32
 
 Paste the output into `.env` as `GITHUB_WEBHOOK_SECRET`. Do not commit `.env`
 or send its contents in chat.
+
+The VM secret was rotated after credentials were exposed in chat. Retrieve the
+current value only on the VM when adding the GitHub webhook:
+
+```bash
+sudo awk -F= '$1 == "GITHUB_WEBHOOK_SECRET" {print $2}' /etc/git-change-bot.env
+```
 
 ## Useful references
 
