@@ -56,7 +56,7 @@ def test_change_blocks_contain_every_section() -> None:
     rendered = json.dumps(blocks, ensure_ascii=False)
 
     assert blocks[0]["type"] == "header"
-    assert "🟡 Code change · acme/ai-caller-core" in blocks[0]["text"]["text"]
+    assert "🟨 Code change · acme/ai-caller-core" in blocks[0]["text"]["text"]
     assert "feature/dotcom-fix" in rendered
     assert "Vishwa" in rendered
     assert "`+28` additions" in rendered

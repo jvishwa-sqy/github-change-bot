@@ -23,7 +23,7 @@ MAX_TEXT_BLOCK = 2900
 MAX_HEADER = 140
 MAX_BLOCKS = 45
 
-RISK_EMOJI = {"low": "🟢", "medium": "🟡", "high": "🔴"}
+RISK_EMOJI = {"low": "🟩", "medium": "🟨", "high": "🟥"}
 
 
 def _truncate(text: str, limit: int) -> str:
@@ -88,7 +88,7 @@ def build_change_blocks(
             "text": {
                 "type": "plain_text",
                 "text": _truncate(
-                    f"{RISK_EMOJI.get(risk, '⚪')} Code change · {event.project_name}",
+                    f"{RISK_EMOJI.get(risk, '⬜')} Code change · {event.project_name}",
                     MAX_HEADER,
                 ),
                 "emoji": True,
@@ -103,7 +103,7 @@ def build_change_blocks(
                 },
                 {
                     "type": "mrkdwn",
-                    "text": f"*Risk level*\n{RISK_EMOJI.get(risk, '⚪')} {risk.title()}",
+                    "text": f"*Risk level*\n{RISK_EMOJI.get(risk, '⬜')} {risk.title()}",
                 },
                 {
                     "type": "mrkdwn",
