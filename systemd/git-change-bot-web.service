@@ -1,0 +1,48 @@
+[Unit]
+Description=git-change-bot webhook receiver (FastAPI)
+Documentation=file:///opt/git-change-bot/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=gitbot
+Group=gitbot
+WorkingDirectory=/opt/git-change-bot
+EnvironmentFile=/etc/git-change-bot.env
+ExecStart=/opt/git-change-bot/.venv/bin/uvicorn app.main:app \
+    --host 127.0.0.1 \
+    --port 8088 \
+    --workers 2 \
+    --proxy-headers \
+    --forwarded-allow-ips 127.0.0.1 \
+    --no-access-log
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+KillSignal=SIGTERM
+
+# --- hardening: the service only needs its own data directory -------------
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+ReadWritePaths=/var/lib/git-change-bot
+StateDirectory=git-change-bot
+# Keep /var/lib/git-change-bot at 0750; it holds mirrored source code.
+StateDirectoryMode=0750
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=git-change-bot-web
+
+[Install]
+WantedBy=multi-user.target
