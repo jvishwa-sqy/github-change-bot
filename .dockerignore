@@ -8,5 +8,3 @@ __pycache__
 .data
 *.sqlite3
 tests
-systemd
-deploy
