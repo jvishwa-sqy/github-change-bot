@@ -37,6 +37,12 @@ at `/var/lib/git-change-bot/.ssh/id_ed25519`. GitHub currently rejects that
 key, so it must be granted access before the worker can clone source
 repositories.
 
+The first monitored repository is prepared:
+
+| Repository | GitHub ID | Bootstrap state |
+|---|---:|---|
+| `jvishwa-sqy/github-change-bot` | `1359830861` | Mirror and repository map created successfully |
+
 ## Pending external setup
 
 These items require your GitHub, Slack, cloud, and server credentials. They
@@ -73,20 +79,15 @@ cannot be completed from this workspace alone.
 
 ## Immediate remaining actions
 
-1. Add the public key from `/home/aisqy/.ssh/id_ed25519.pub` to GitHub access:
-   either grant the corresponding GitHub user read access to every repository
-   the bot will analyse, or add the key under the repository's **Settings →
-   Deploy keys** with write access disabled. GitHub currently rejects this key
-   when the service account tests it.
-2. Configure the temporary Cloudflare URL as the GitHub webhook endpoint. Get
-   its current value with `sudo journalctl -u git-change-bot-tunnel --no-pager
-   -o cat`, then append `/webhooks/github`. The tunnel URL changes after a
-   restart, so update GitHub whenever that happens.
-3. For permanent use, provide a public domain name. Point its DNS record to
+1. Add a GitHub webhook to `jvishwa-sqy/github-change-bot`: get the current
+   tunnel URL with `sudo journalctl -u git-change-bot-tunnel --no-pager -o cat`,
+   append `/webhooks/github`, choose content type `application/json`, select
+   the **Pushes** event, and use the current VM webhook secret.
+2. For permanent use, provide a public domain name. Point its DNS record to
    this VM and allow inbound TCP ports 80 and 443 in the cloud firewall. A TLS
    certificate is required before replacing the temporary tunnel.
-4. Provide the first repository's GitHub `owner/repository` name. Its numeric
-   repository ID and SSH URL are needed for the bootstrap command.
+3. Before further public use, rotate the exposed Google API key and Slack
+   incoming webhook URL through their respective provider consoles.
 
 ## How to obtain the required `.env` values
 
