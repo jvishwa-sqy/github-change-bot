@@ -126,6 +126,9 @@ Do not set both providers unless you intend to keep one unused. The value of
 
 ## 4. Create the Slack webhook
 
+Suggested Slack app description: **Turns GitHub code pushes into clear,
+AI-powered Slack change summaries.**
+
 1. Go to <https://api.slack.com/apps> and select **Create New App**.
 2. Choose **From scratch**, give it a name such as `GitHub Change Bot`, and
    select your Slack workspace.
