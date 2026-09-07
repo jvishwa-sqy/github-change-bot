@@ -9,7 +9,13 @@ import pytest
 
 from app.errors import SlackError
 from app.models import ChangeSummary, DiffResult, PushEvent
-from app.slack import SlackNotifier, build_change_blocks, build_simple_blocks, compare_link
+from app.slack import (
+    SlackNotifier,
+    build_change_blocks,
+    build_simple_blocks,
+    compare_link,
+    fallback_text,
+)
 
 WEBHOOK = "https://hooks.slack.com/services/T0/B0/secret-token"
 
@@ -50,20 +56,37 @@ def test_change_blocks_contain_every_section() -> None:
     rendered = json.dumps(blocks, ensure_ascii=False)
 
     assert blocks[0]["type"] == "header"
-    assert "Code Change · acme/ai-caller-core" in blocks[0]["text"]["text"]
+    assert "🟡 Code change · acme/ai-caller-core" in blocks[0]["text"]["text"]
     assert "feature/dotcom-fix" in rendered
     assert "Vishwa" in rendered
-    assert "+28 −9" in rendered
-    assert "MEDIUM" in rendered
+    assert "`+28` additions" in rendered
+    assert "`−9` deletions" in rendered
+    assert "Medium" in rendered
     for section in (
         "Summary",
-        "What changed",
-        "Affected",
+        "Key changes",
+        "Affected areas",
     ):
         assert f"*{section}*" in rendered or section in rendered
     for removed_section in ("Impact", "Risk reason", "Recommended tests"):
         assert f"*{removed_section}*" not in rendered
-    assert "View Diff" in rendered
+    assert "Review diff on GitHub" in rendered
+    assert [block["type"] for block in blocks].count("divider") == 2
+
+
+def test_dynamic_mrkdwn_text_is_escaped() -> None:
+    unsafe = summary()
+    unsafe.summary = "Changed <script> & <!channel>."
+    unsafe.changes = ["Render <value> & continue"]
+    blocks = build_change_blocks(
+        event(author_name="Dev <@U123>", ref="refs/heads/fix`ping"), unsafe, diff()
+    )
+    rendered = json.dumps(blocks, ensure_ascii=False)
+
+    assert "&lt;script&gt; &amp; &lt;!channel&gt;" in rendered
+    assert "Dev &lt;@U123&gt;" in rendered
+    assert "`fix'ping`" in rendered
+    assert "Render &lt;value&gt; &amp; continue" in rendered
 
 
 def test_button_links_to_the_compare_page() -> None:
@@ -94,7 +117,9 @@ def test_blocks_are_truncated_to_slack_limits() -> None:
 
 def test_simple_blocks_state_no_llm_was_used() -> None:
     blocks = build_simple_blocks(event(), "Branch deleted", "`x` was deleted.")
-    assert "no LLM analysis needed" in json.dumps(blocks)
+    rendered = json.dumps(blocks)
+    assert blocks[0]["type"] == "header"
+    assert "No AI analysis needed" in rendered
 
 
 async def test_notifier_posts_payload() -> None:
@@ -112,6 +137,20 @@ async def test_notifier_posts_payload() -> None:
     assert seen["url"] == WEBHOOK
     assert "blocks" in seen["body"]
     assert seen["body"]["text"].startswith("[MEDIUM]")
+
+
+def test_fallback_text_does_not_create_slack_mentions() -> None:
+    text = fallback_text(
+        event(author_name="Dev <@U123>"),
+        ChangeSummary(
+            summary="Notify <!channel> & continue",
+            changes=[],
+            affected_components=[],
+            risk="high",
+        ),
+    )
+
+    assert "&lt;!channel&gt; &amp; continue" in text
 
 
 async def test_notifier_retries_server_errors() -> None:

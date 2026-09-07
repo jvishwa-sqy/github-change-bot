@@ -31,10 +31,26 @@ def _truncate(text: str, limit: int) -> str:
     return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"
 
 
+def _escape_mrkdwn(text: str) -> str:
+    """Escape Slack control characters in untrusted text.
+
+    Slack interprets ``&``, ``<`` and ``>`` inside mrkdwn text objects. The
+    repository and model supply most message content, so escape those values
+    before adding our own formatting.
+    """
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def _inline_code(text: str, limit: int = 100) -> str:
+    """Render a bounded value as inline code without allowing a stray backtick."""
+    value = _escape_mrkdwn(_truncate(text, limit)).replace("`", "'")
+    return f"`{value}`"
+
+
 def _bullets(items: list[str], *, limit: int = 8) -> str:
     if not items:
         return ""
-    shown = [f"• {_truncate(item, 400)}" for item in items[:limit]]
+    shown = [f"• {_escape_mrkdwn(_truncate(item, 400))}" for item in items[:limit]]
     if len(items) > limit:
         shown.append(f"• …and {len(items) - limit} more")
     return _truncate("\n".join(shown), MAX_TEXT_BLOCK)
@@ -71,39 +87,55 @@ def build_change_blocks(
             "type": "header",
             "text": {
                 "type": "plain_text",
-                "text": _truncate(f"Code Change · {event.project_name}", MAX_HEADER),
+                "text": _truncate(
+                    f"{RISK_EMOJI.get(risk, '⚪')} Code change · {event.project_name}",
+                    MAX_HEADER,
+                ),
                 "emoji": True,
             },
         },
         {
             "type": "section",
             "fields": [
-                {"type": "mrkdwn", "text": f"*Branch*\n`{_truncate(event.branch, 100)}`"},
-                {"type": "mrkdwn", "text": f"*Author*\n{_truncate(event.author_name, 100)}"},
                 {
                     "type": "mrkdwn",
-                    "text": f"*Diff*\n+{diff.total_additions} −{diff.total_deletions} "
-                    f"({len(diff.files)} file{'s' if len(diff.files) != 1 else ''})",
+                    "text": f"*Branch*\n{_inline_code(event.branch)}",
                 },
                 {
                     "type": "mrkdwn",
-                    "text": f"*Risk*\n{RISK_EMOJI.get(risk, '⚪')} {risk.upper()}",
+                    "text": f"*Risk level*\n{RISK_EMOJI.get(risk, '⚪')} {risk.title()}",
+                },
+                {
+                    "type": "mrkdwn",
+                    "text": f"*Author*\n{_escape_mrkdwn(_truncate(event.author_name, 100))}",
+                },
+                {
+                    "type": "mrkdwn",
+                    "text": f"*Change size*\n`+{diff.total_additions}` additions · "
+                    f"`−{diff.total_deletions}` deletions",
                 },
             ],
         },
-        _section(f"*Summary*\n{summary.summary}"),
+        {"type": "divider"},
+        _section(f"*Summary*\n{_escape_mrkdwn(summary.summary)}"),
     ]
 
-    blocks += _titled("What changed", _bullets(summary.changes))
-    blocks += _titled("Affected", _bullets(summary.affected_components, limit=6))
+    blocks += _titled("Key changes", _bullets(summary.changes))
+    blocks += _titled("Affected areas", _bullets(summary.affected_components, limit=6))
+    blocks.append({"type": "divider"})
 
-    context_bits = [f"`{event.before_sha[:8]}…{event.after_sha[:8]}`"]
-    if event.commit_count:
-        context_bits.append(f"{event.commit_count} commit(s)")
+    file_count = diff.total_files or len(diff.files) + len(diff.ignored_files) + len(
+        diff.dropped_files
+    )
+    context_bits = [
+        f"{file_count} file{'s' if file_count != 1 else ''}",
+        f"{event.commit_count} commit{'s' if event.commit_count != 1 else ''}",
+        _inline_code(f"{event.before_sha[:8]} → {event.after_sha[:8]}", 24),
+    ]
     if diff.ignored_files:
-        context_bits.append(f"{len(diff.ignored_files)} generated/binary file(s) skipped")
+        context_bits.append(f"{len(diff.ignored_files)} generated/binary skipped")
     if diff.dropped_files:
-        context_bits.append(f"{len(diff.dropped_files)} file(s) omitted for size")
+        context_bits.append(f"{len(diff.dropped_files)} omitted for size")
     blocks.append(
         {
             "type": "context",
@@ -118,9 +150,12 @@ def build_change_blocks(
                 "elements": [
                     {
                         "type": "button",
-                        "text": {"type": "plain_text", "text": "View Diff", "emoji": True},
+                        "text": {
+                            "type": "plain_text",
+                            "text": "Review diff on GitHub",
+                            "emoji": True,
+                        },
                         "url": link,
-                        "style": "primary",
                     }
                 ],
             }
@@ -133,13 +168,23 @@ def build_simple_blocks(
 ) -> list[dict[str, Any]]:
     """Cheap deterministic message: branch created/deleted, ignored-only push."""
     blocks: list[dict[str, Any]] = [
-        _section(f"*{title} · {event.project_name}*\n{detail}"),
+        {
+            "type": "header",
+            "text": {
+                "type": "plain_text",
+                "text": _truncate(f"GitHub update · {event.project_name}", MAX_HEADER),
+                "emoji": True,
+            },
+        },
+        _section(f"*{_escape_mrkdwn(title)}*\n{_escape_mrkdwn(detail)}"),
+        {"type": "divider"},
         {
             "type": "context",
             "elements": [
                 {
                     "type": "mrkdwn",
-                    "text": f"`{event.branch}` · {event.author_name} · no LLM analysis needed",
+                    "text": f"{_inline_code(event.branch)} · "
+                    f"{_escape_mrkdwn(event.author_name)} · No AI analysis needed",
                 }
             ],
         },
@@ -151,7 +196,11 @@ def build_simple_blocks(
                 "elements": [
                     {
                         "type": "button",
-                        "text": {"type": "plain_text", "text": "View", "emoji": True},
+                        "text": {
+                            "type": "plain_text",
+                            "text": "Open on GitHub",
+                            "emoji": True,
+                        },
                         "url": link,
                     }
                 ],
@@ -163,9 +212,12 @@ def build_simple_blocks(
 def fallback_text(event: PushEvent, summary: ChangeSummary | None = None) -> str:
     """Plain-text fallback used for notifications and accessibility."""
     if summary is None:
-        return f"Code change in {event.project_name} on {event.branch}"
+        return _escape_mrkdwn(f"Code change in {event.project_name} on {event.branch}")
     return _truncate(
-        f"[{summary.risk.upper()}] {event.project_name}/{event.branch}: {summary.summary}", 400
+        _escape_mrkdwn(
+            f"[{summary.risk.upper()}] {event.project_name}/{event.branch}: {summary.summary}"
+        ),
+        400,
     )
 
 
